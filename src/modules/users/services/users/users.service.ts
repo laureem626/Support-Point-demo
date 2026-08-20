@@ -1,9 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from '../../entities/user.entity';
 import { Repository } from 'typeorm';
 import { CreateUserDto } from '../../dtos/create-user.dto';
 import { hashPassword } from '../../../../common/utils/password-hash';
+import { QueryParamsDto } from '../../../../common/queries/query-params.dto';
+import { PaginationOptionsDto } from '../../../../common/pagination/dto/pagination-options.dto';
+import { validateAndSort } from '../../../../common/utils/sort-queryset';
+import { PaginationService } from '../../../../common/pagination/pagination-service';
 
 @Injectable()
 export class UsersService {
@@ -26,10 +30,73 @@ export class UsersService {
     const savedUser = await this.usersRepository.save(user);
 
     // Remove password from the response without mutating the entity
-    const { password, ...userWithoutPassword } = savedUser;
+    // const { password, ...userWithoutPassword } = savedUser;
 
     return {
       user: savedUser,
     };
+  }
+
+  async findAll(
+    queryParamsDto: QueryParamsDto,
+    paginationOptsDto: PaginationOptionsDto,
+  ) {
+    const { search, orderBy, sortOrder, isActive } = queryParamsDto;
+
+    const queryBuilder = this.usersRepository
+      .createQueryBuilder('user')
+      .select([
+        'user.id',
+        'user.uuid',
+        'user.firstName',
+        'user.lastName',
+        'user.mobile',
+        'user.designation',
+        'user.isActive',
+        'user.createdAt',
+        'user.updatedAt',
+      ]);
+
+    // Filter based on active/not active
+    if (isActive !== undefined) {
+      queryBuilder.where('user.isActive = :isActive', {
+        isActive: queryParamsDto.isActive,
+      });
+    }
+
+    // Searching
+    if (search) {
+      queryBuilder.andWhere(
+        `(
+          user.firstName ILIKE :search OR
+          user.lastName ILIKE :search OR
+          user.mobile ILIKE :search
+        )`,
+        { search: `%${search}%` },
+      );
+    }
+
+    //Sorting
+    await validateAndSort(
+      queryBuilder,
+      orderBy ?? 'id',
+      sortOrder ?? 'ASC',
+      'user',
+      ['id', 'firstName', 'lastName', 'mobile', 'designation'],
+    );
+
+    return PaginationService.paginate(queryBuilder, paginationOptsDto);
+  }
+
+  async findOne(uuid: string): Promise<User> {
+    const user = await this.usersRepository.findOne({
+      where: { uuid },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User not found`);
+    }
+
+    return user;
   }
 }

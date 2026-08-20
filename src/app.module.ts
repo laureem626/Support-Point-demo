@@ -1,14 +1,4 @@
 import { Module } from '@nestjs/common';
-<<<<<<< HEAD
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-
-
-@Module({
-  
-  controllers: [AppController],
-  providers: [AppService],
-=======
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { IsUniqueConstraint } from './common/validators/is-unique.validator';
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -18,6 +8,7 @@ import { UsersModule } from './modules/users/users.module';
 import { join } from 'path';
 import { config } from './config/config';
 import typeorm from './config/typeorm';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -45,8 +36,8 @@ import typeorm from './config/typeorm';
     }),
 
     UsersModule,
+    AuthModule,
   ],
   providers: [IsUniqueConstraint],
->>>>>>> d053ebd (implementing users module)
 })
 export class AppModule {}
