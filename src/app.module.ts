@@ -13,15 +13,13 @@ import { AuthModule } from './modules/auth/auth.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'uploads'), // Corrected here
+      rootPath: join(__dirname, '..', 'uploads'),
       exclude: ['api/(.*)'],
       serveRoot: '/uploads',
     }),
 
-    //cron job module
     ScheduleModule.forRoot(),
 
-    //Config for db connections
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) =>
@@ -29,7 +27,6 @@ import { AuthModule } from './modules/auth/auth.module';
       inject: [ConfigService],
     }),
 
-    //Config for environment Variable and typeorm ds
     ConfigModule.forRoot({
       isGlobal: true,
       load: [config, typeorm],
@@ -38,6 +35,7 @@ import { AuthModule } from './modules/auth/auth.module';
     UsersModule,
     AuthModule,
   ],
+
   providers: [IsUniqueConstraint],
 })
 export class AppModule {}
