@@ -12,20 +12,35 @@ import { LocalAuthGuard } from '../../guards/local-auth.guard';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RefreshTokenDto } from '../../dtos/refresh-token/refresh-token.dto';
 import { Public } from '../../../../common/decorators/is-public-route.decorator';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 @Controller()
+@ApiTags('Authentication')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   @Public()
   @UseGuards(LocalAuthGuard)
   @Post('login')
+  @ApiOperation({ summary: 'Log in with mobile number and password' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        mobile: { type: 'string', example: '9876543210' },
+        password: { type: 'string', example: 'Password123!' },
+      },
+      required: ['mobile', 'password'],
+    },
+  })
   async login(@Request() req: any) {
     return this.authService.login(req.user);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get the current user profile' })
   getProfile(@Request() req) {
     return req.user;
   }
@@ -33,6 +48,7 @@ export class AuthController {
   @Public()
   @HttpCode(200)
   @Post('refresh')
+  @ApiOperation({ summary: 'Refresh access and refresh tokens' })
   async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
     return await this.authService.refresh(refreshTokenDto);
   }

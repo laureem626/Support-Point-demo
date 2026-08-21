@@ -5,6 +5,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { ValidationPipe } from '@nestjs/common';
 import { useContainer } from 'class-validator';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -26,6 +27,20 @@ async function bootstrap() {
   // app.useStaticAssets(join(__dirname, '..', 'media'), {
   //   prefix: '/media/',
   // });
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Support Point API')
+    .setDescription('API documentation for Support Point')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('docs', app, swaggerDocument, {
+    jsonDocumentUrl: 'docs-json',
+    swaggerOptions: {
+      persistAuthorization: false,
+    },
+  });
+
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

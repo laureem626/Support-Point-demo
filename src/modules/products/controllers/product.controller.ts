@@ -1,44 +1,48 @@
-import { Controller, Get, Post, Body, Param, ParseIntPipe, HttpStatus, Res } from '@nestjs/common';
-import type { Response } from 'express';
+import { Controller, Get, Post, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { ProductsService } from '../services/product.service';
 import { CreateProductDto } from '../dtos/create-product.dto';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 
-@Controller('api/products')
+@Controller('products')
+@ApiTags('Products')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post()
-  async create(@Body() createProductDto: CreateProductDto, @Res() res: Response) {
+  @ApiOperation({ summary: 'Create a product' })
+  @ApiResponse({ status: 201, description: 'Product created successfully.' })
+  async create(@Body() createProductDto: CreateProductDto) {
     const product = await this.productsService.create(createProductDto);
-    
-    return res.status(HttpStatus.CREATED).json({
-      status: HttpStatus.CREATED,
-      success: true,
+    return {
       message: 'Product created successfully',
       data: product,
-    });
+    };
   }
 
   @Get()
-  async findAll(@Res() res: Response) {
+  @ApiOperation({ summary: 'List all products' })
+  @ApiResponse({ status: 200, description: 'Products retrieved successfully.' })
+  async findAll() {
     const products = await this.productsService.findAll();
-    
-    return res.status(HttpStatus.OK).json({
-      status: HttpStatus.OK,
-      success: true,
+    return {
       message: 'Products retrieved successfully',
       data: products,
-    });
+    };
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+  @ApiOperation({ summary: 'Get a product by ID' })
+  @ApiParam({ name: 'id', example: 1, type: Number })
+  @ApiResponse({ status: 200, description: 'Product returned successfully.' })
+  @ApiResponse({ status: 404, description: 'Product not found.' })
+  async findOne(@Param('id', ParseIntPipe) id: number) {
     const product = await this.productsService.findOne(id);
-    
-    return res.status(HttpStatus.OK).json({
-      status: HttpStatus.OK,
+    return {
       data: product,
-    });
+    };
   }
 }

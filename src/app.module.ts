@@ -9,6 +9,7 @@ import { join } from 'path';
 import { config } from './config/config';
 import typeorm from './config/typeorm';
 import { AuthModule } from './modules/auth/auth.module';
+import { ProductsModule } from './modules/products/products.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { AuthModule } from './modules/auth/auth.module';
 
     UsersModule,
     AuthModule,
+    ProductsModule,
   ],
 
   providers: [IsUniqueConstraint],
