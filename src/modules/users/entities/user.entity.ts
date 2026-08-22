@@ -39,4 +39,5 @@ export class User {
 
   @UpdateDateColumn({ type: 'timestamp' })
   updatedAt: Date;
+  static id: any;
 }

@@ -5,8 +5,9 @@ import { User } from '../../entities/user.entity';
 import { Public } from '../../../../common/decorators/is-public-route.decorator';
 import { PaginationOptionsDto } from '../../../../common/pagination/dto/pagination-options.dto';
 import { QueryParamsDto } from '../../../../common/queries/query-params.dto';
-
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 @Controller()
+@ApiTags('Users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 

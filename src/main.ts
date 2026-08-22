@@ -31,6 +31,11 @@ async function bootstrap() {
     .setTitle('Support Point API')
     .setDescription('API documentation for Support Point')
     .setVersion('1.0')
+    .addTag('Auth')
+    .addTag('Users')
+    .addTag('Products')
+    .addTag('Companies')
+    .addTag('Issues') 
     .addBearerAuth()
     .build();
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);

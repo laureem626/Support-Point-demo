@@ -15,7 +15,7 @@ import { Public } from '../../../../common/decorators/is-public-route.decorator'
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 @Controller()
-@ApiTags('Authentication')
+@ApiTags('Auth')
 export class AuthController {
   constructor(private authService: AuthService) { }
 

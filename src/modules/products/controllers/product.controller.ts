@@ -5,7 +5,7 @@ import { ProductsService } from '../services/product.service';
 import { CreateProductDto } from '../dtos/create-product.dto';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 
-@Controller('products')
+@Controller()
 @ApiTags('Products')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()

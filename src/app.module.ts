@@ -11,6 +11,7 @@ import typeorm from './config/typeorm';
 import { AuthModule } from './modules/auth/auth.module';
 import { ProductsModule } from './modules/products/products.module';
 import { CompaniesModule } from './modules/companies/companies.modules';
+import { IssuesModule } from './modules/issues/issues.module';
 
 @Module({
   imports: [
@@ -38,6 +39,8 @@ import { CompaniesModule } from './modules/companies/companies.modules';
     AuthModule,
     ProductsModule,
     CompaniesModule,
+    IssuesModule,
+
   ],
 
   providers: [IsUniqueConstraint],
