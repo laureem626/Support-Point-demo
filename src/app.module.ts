@@ -10,6 +10,7 @@ import { config } from './config/config';
 import typeorm from './config/typeorm';
 import { AuthModule } from './modules/auth/auth.module';
 import { ProductsModule } from './modules/products/products.module';
+import { CompaniesModule } from './modules/companies/companies.modules';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ProductsModule } from './modules/products/products.module';
     UsersModule,
     AuthModule,
     ProductsModule,
+    CompaniesModule,
   ],
 
   providers: [IsUniqueConstraint],

@@ -13,7 +13,7 @@ export class ProductsService {
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     const newProduct = this.productRepository.create(createProductDto);
-    // Note: If 'number' needs custom logic (e.g., getting the last number + 1), implement it here before saving.
+    
     return await this.productRepository.save(newProduct);
   }
 
@@ -21,10 +21,10 @@ export class ProductsService {
     return await this.productRepository.find();
   }
 
-  async findOne(id: number): Promise<Product> {
-    const product = await this.productRepository.findOne({ where: { id } });
+  async findOne(uuid: string): Promise<Product> {
+    const product = await this.productRepository.findOne({ where: { uuid } });
     if (!product) {
-      throw new NotFoundException(`Product with ID ${id} not found`);
+      throw new NotFoundException(`Product with UUID ${uuid} not found`);
     }
     return product;
   }

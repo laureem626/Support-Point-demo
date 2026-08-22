@@ -34,13 +34,13 @@ export class ProductsController {
     };
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get a product by ID' })
-  @ApiParam({ name: 'id', example: 1, type: Number })
+  @Get(':uuid')
+  @ApiOperation({ summary: 'Get a product by UUID' })
+  @ApiParam({ name: 'uuid', example: '123e4567-e89b-12d3-a456-426614174000', type: String })
   @ApiResponse({ status: 200, description: 'Product returned successfully.' })
   @ApiResponse({ status: 404, description: 'Product not found.' })
-  async findOne(@Param('id', ParseIntPipe) id: number) {
-    const product = await this.productsService.findOne(id);
+  async findOne(@Param('uuid') uuid: string) {
+    const product = await this.productsService.findOne(uuid);
     return {
       data: product,
     };

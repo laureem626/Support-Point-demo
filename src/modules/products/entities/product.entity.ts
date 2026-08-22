@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, Generated } from 'typeorm';
+import { Company } from '../../companies/entities/company.entity';
+import type { Relation } from 'typeorm';
+
+import { 
+  Entity,
+  PrimaryGeneratedColumn, 
+  Column, 
+  Generated,
+  OneToMany
+} from 'typeorm';
 
 @Entity('products')
 export class Product {
@@ -9,8 +18,7 @@ export class Product {
   @Generated('uuid')
   uuid: string;
 
-  // Assuming you want an auto-incrementing number starting from 1001
-  @Column({ type: 'int', default: 1001 }) 
+  @Column({ type: 'int', default: 1001 })
   number: number;
 
   @Column()
@@ -18,6 +26,9 @@ export class Product {
 
   @Column({ type: 'text' })
   description: string;
+
+  @OneToMany(() => Company, (company: Company) => company.product)
+  companies: Relation<Company[]>;
 
   @Column()
   link: string;
