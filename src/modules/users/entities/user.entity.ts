@@ -1,3 +1,4 @@
+import { Designation } from 'src/common/enums/issue.enum';
 import {
   Column,
   CreateDateColumn,
@@ -22,8 +23,11 @@ export class User {
   @Column({ type: 'varchar', length: 20, nullable: false, unique: false })
   lastName: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: false })
-  designation: string;
+  @Column({
+    type: 'enum',
+    enum: Designation, nullable: true,
+  })
+  designation: Designation;
 
   @Column({ type: 'varchar', unique: true, length: 12, nullable: false })
   mobile: string;

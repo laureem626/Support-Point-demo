@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import { User } from '../../modules/users/entities/user.entity';
 import { hashPassword } from '../../common/utils/password-hash';
+import { Designation } from 'src/common/enums/issue.enum';
 
 export const seedSystemAdmin = async (dataSource: DataSource) => {
   const userRepository = dataSource.getRepository(User);
@@ -20,7 +21,7 @@ export const seedSystemAdmin = async (dataSource: DataSource) => {
   const adminUser = userRepository.create({
     firstName: 'System',
     lastName: 'Administrator',
-    designation: 'System Administrator',
+    designation: Designation.AT_SUPPORTER,
     mobile: adminMobile,
     isActive: true,
     password: hashedPassword,

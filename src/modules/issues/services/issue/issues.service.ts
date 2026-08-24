@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException,BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Issue } from '../../entities/issues/issues.entity';
@@ -10,39 +14,44 @@ import { CreateAssignmentDto } from '../../dto/create.assignment.dto';
 import { User } from 'src/modules/users/entities/user.entity';
 import { Comment } from '../../entities/issues/comment.entity';
 
-
 @Injectable()
 export class IssuesService {
   constructor(
     @InjectRepository(Issue)
     private readonly issueRepository: Repository<Issue>,
-     @InjectRepository(Comment)
-  private readonly commentRepository: Repository<Comment>,
-  @InjectRepository(IssueAssignment)
-  private readonly assignmentRepository: Repository<IssueAssignment>,
-  @InjectRepository(User)
-private readonly userRepository: Repository<User>
+    @InjectRepository(Comment)
+    private readonly commentRepository: Repository<Comment>,
+    @InjectRepository(IssueAssignment)
+    private readonly assignmentRepository: Repository<IssueAssignment>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
-  async create(createIssueDto: CreateIssueDto) {
+async create(createIssueDto: CreateIssueDto, user: User) {
     // Generate next ticket number (10001 start)
     const maxNumberResult = await this.issueRepository
-      .createQueryBuilder('issue')
-      .select('MAX(issue.number)', 'max')
-      .getRawOne();
+    .createQueryBuilder('issue')
+    .select('MAX(issue.number)', 'max')
+    .getRawOne();
 
+  const nextNumber = maxNumberResult?.max
+    ? Number(maxNumberResult.max) + 1
+    : 1;
 
-    const nextNumber = maxNumberResult?.max ? Number(maxNumberResult.max) + 1 : 10001;
+  const issueNumber = `ISSUE-${String(nextNumber).padStart(4, '0')}`;
+
 
     const issue = this.issueRepository.create({
       ...createIssueDto,
       number: nextNumber,
+      
       attachment: createIssueDto.attachment ?? null,
+       createdBy: { id: user.id },
+    updatedBy: { id: user.id },
     });
-    
 
     const saved = await this.issueRepository.save(issue);
-    
+
     return {
       status: 201,
       message: 'Issue reported successfully',
@@ -52,59 +61,58 @@ private readonly userRepository: Repository<User>
 
   //POST AN ISSUE
   async createComment(createCommentDto: CreateCommentDto) {
+    const { userId, issueId, comments } = createCommentDto;
 
- const { userId, issueId, comments } = createCommentDto;
+    const issue = await this.issueRepository.findOne({
+      where: { id: issueId },
+    });
 
-  const issue = await this.issueRepository.findOne({
-    where: { id: issueId },
-  });
+    if (!issue) {
+      throw new NotFoundException('Issue not found');
+    }
 
-  if (!issue) {
-    throw new NotFoundException('Issue not found');
+    const comment = this.commentRepository.create({
+      issueId: issue.id,
+      userId,
+      comments,
+    });
+    return this.commentRepository.save(comment);
   }
 
-  const comment = this.commentRepository.create({
-    issueId: issue.id,
-    userId,
-    comments,
-  });
-  return this.commentRepository.save(comment);
-} 
+  //POST /api/issues/assign
+  async assignIssue(createAssignmentDto: CreateAssignmentDto) {
+    const { issueUuid, userId, description } = createAssignmentDto;
 
- //POST /api/issues/assign
-async assignIssue(createAssignmentDto: CreateAssignmentDto) {
-  const { issueUuid, userId, description } = createAssignmentDto;
+    // Find issue using UUID
+    const issue = await this.issueRepository.findOne({
+      where: { uuid: issueUuid },
+    });
 
-  // Find issue using UUID
-  const issue = await this.issueRepository.findOne({
-    where: { uuid: issueUuid },
-  });
+    if (!issue) {
+      throw new NotFoundException('Issue not found');
+    }
 
-  if (!issue) {
-    throw new NotFoundException('Issue not found');
+    // Find user using userId
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Create assignment
+    const assignment = this.assignmentRepository.create({
+      issueId: issue.id,
+      userId: user.id,
+      description,
+    });
+
+    // Save assignment
+    return this.assignmentRepository.save(assignment);
   }
 
-  // Find user using userId
-  const user = await this.userRepository.findOne({
-    where: { id: userId },
-  });
-
-  if (!user) {
-    throw new NotFoundException('User not found');
-  }
-
-  // Create assignment
-  const assignment = this.assignmentRepository.create({
-    issueId: issue.id,
-    userId: user.id,
-    description,
-  });
-
-  // Save assignment
-  return this.assignmentRepository.save(assignment);
-}
-
- //GET ALL ISSUES
+  //GET ALL ISSUES
   async findAll() {
     const data = await this.issueRepository.find({
       order: { id: 'ASC' },
@@ -120,12 +128,11 @@ async assignIssue(createAssignmentDto: CreateAssignmentDto) {
   async findByUuid(uuid: string) {
     const issue = await this.issueRepository.findOne({
       where: { uuid },
-     relations: {
-  comments: true,
-  assignments: true,
-},
+      relations: {
+        comments: true,
+        assignments: true,
+      },
     });
-    
 
     if (!issue) {
       throw new NotFoundException(`Issue with UUID ${uuid} not found`);
@@ -137,7 +144,7 @@ async assignIssue(createAssignmentDto: CreateAssignmentDto) {
     };
   }
 
-//UPDATE ISSUE STATUS
+  //UPDATE ISSUE STATUS
   async updateStatusByUuid(uuid: string, updateDto: UpdateIssueStatusDto) {
     const issue = await this.issueRepository.findOne({ where: { uuid } });
     if (!issue) {
@@ -153,32 +160,30 @@ async assignIssue(createAssignmentDto: CreateAssignmentDto) {
     };
   }
 
-//GET /api/issues/assign
+  //GET /api/issues/assign
   async getAssignments() {
-  return this.assignmentRepository.find({
-    relations: {
-      issue: true,
-      user: true,
-    },
-  });
-}
-
-//GET /api/issues/assign/:uuid
-async getAssignment(uuid: string) {
-
-  const assignment = await this.assignmentRepository.findOne({
-    where: { uuid },
-    relations: {
-      issue: true,
-      user: true,
-    },
-  });
-
-  if (!assignment) {
-    throw new NotFoundException('Assignment not found');
+    return this.assignmentRepository.find({
+      relations: {
+        issue: true,
+        user: true,
+      },
+    });
   }
 
-  return assignment;
-}
-    
+  //GET /api/issues/assign/:uuid
+  async getAssignment(uuid: string) {
+    const assignment = await this.assignmentRepository.findOne({
+      where: { uuid },
+      relations: {
+        issue: true,
+        user: true,
+      },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException('Assignment not found');
+    }
+
+    return assignment;
+  }
 }

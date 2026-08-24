@@ -28,18 +28,12 @@ export class CreateIssueDto {
   @IsEnum(IssuePriority)
   priority!: IssuePriority;
 
-@ApiProperty({ example: "2026-08-18T09:30:00Z" })
-  @IsDateString()
-  reportedAt!: string;
+
 
 @ApiProperty({ example: "null" })
   @IsOptional()
   @IsString()
   attachment?: string | null;
-
-@ApiProperty({ example: 'AT_SUPPORT', enum: IssueStatus })
-  @IsEnum(IssueStatus)
-  status!: IssueStatus;
 
 @ApiProperty({ example: 'Issue title' })
   @IsString()

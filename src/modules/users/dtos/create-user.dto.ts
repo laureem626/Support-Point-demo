@@ -1,4 +1,5 @@
 import {
+  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -8,6 +9,7 @@ import {
 } from 'class-validator';
 import { IsUnique } from '../../../common/validators/is-unique.validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Designation } from 'src/common/enums/issue.enum';
 
 export class CreateUserDto {
   @ApiProperty({ example: 'John' })
@@ -22,11 +24,9 @@ export class CreateUserDto {
   @Length(2, 20)
   lastName!: string;
 
-  @ApiProperty({ example: 'Support Agent' })
-  @IsString()
-  @IsNotEmpty()
-  @Length(2, 20)
-  designation!: string;
+  @ApiProperty({ example: 'AT_SUPPORTER', enum: Designation })
+  @IsEnum(Designation)
+  designation!: Designation;
 
   @ApiProperty({ example: '987654321012' })
   @IsString()

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, ParseUUIDPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, ParseUUIDPipe, UseGuards, Req } from '@nestjs/common';
 import { IssuesService } from '../services/issue/issues.service';
 import { CreateIssueDto } from '../dto/create-issue.dto';
 import { UpdateIssueStatusDto } from '../dto/update-issue.dto';
@@ -6,6 +6,7 @@ import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CreateCommentDto } from '../dto/create-comment.dto';
 import { CreateAssignmentDto } from '../dto/create.assignment.dto';
+import { User } from 'src/modules/users/entities/user.entity';
 
 
 
@@ -17,9 +18,15 @@ export class IssuesController {
   constructor(private readonly issuesService: IssuesService) { }
 
   @Post()
-  create(@Body() createIssueDto: CreateIssueDto) {
-    return this.issuesService.create(createIssueDto);
-  }
+create(
+  @Body() createIssueDto: CreateIssueDto,
+  @Req() req,
+) {
+  return this.issuesService.create(
+    createIssueDto,
+    req.user,
+  );
+}
    @Post('comments')
   createComment(@Body() createCommentDto: CreateCommentDto) {
     return this.issuesService.createComment(createCommentDto);

@@ -6,10 +6,13 @@ import {
   CreateDateColumn,
   OneToMany,
   Generated,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { IssueAssignment } from './issues-assignment.entity';
 import { Comment } from './comment.entity';
-
+import { User } from 'src/modules/users/entities/user.entity';
 
 @Entity('issue')
 export class Issue {
@@ -35,13 +38,16 @@ export class Issue {
   @Column({ type: 'enum', enum: IssuePriority, default: IssuePriority.MEDIUM })
   priority: IssuePriority;
 
-  @Column({ name: 'reported_at', type: 'timestamptz' })
-  reportedAt: Date;
+  
 
   @Column({ type: 'varchar', nullable: true, default: null })
   attachment: string | null;
 
-  @Column({ type: 'enum', enum: IssueStatus, default: IssueStatus.AT_SUPPORT })
+  @Column({
+    type: 'enum',
+    enum: IssueStatus,
+    default: IssueStatus.AT_SUPPORTER,
+  })
   status: IssueStatus;
 
   @Column()
@@ -50,8 +56,24 @@ export class Issue {
   @Column({ type: 'text' })
   description: string;
 
- @OneToMany(() => Comment, 'issue')
-comments: Comment[];
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  createdAt: Date;
+
+  // Automatically updated whenever the issue is updated
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updatedAt: Date;
+
+  // ID of the user who created the issue
+  @ManyToOne(() => User, { nullable: true })
+@JoinColumn({ name: 'created_by', referencedColumnName: 'id' })
+createdBy: User | null;
+
+@ManyToOne(() => User, { nullable: true })
+@JoinColumn({ name: 'updated_by', referencedColumnName: 'id' })
+updatedBy: User | null;
+
+  @OneToMany(() => Comment, 'issue')
+  comments: Comment[];
 
   @OneToMany(() => IssueAssignment, (assignment) => assignment.issue)
   assignments: IssueAssignment[];
