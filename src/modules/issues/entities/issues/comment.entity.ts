@@ -3,6 +3,7 @@ import { Entity, PrimaryGeneratedColumn, Column, Generated, ManyToOne, JoinColum
 
 @Entity('comments')
 export class Comment {
+  
   @PrimaryGeneratedColumn()
   id: number;
 

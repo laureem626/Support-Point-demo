@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { UsersService } from '../../services/users/users.service';
 import { CreateUserDto } from '../../dtos/create-user.dto';
 import { User } from '../../entities/user.entity';
@@ -6,6 +6,7 @@ import { Public } from '../../../../common/decorators/is-public-route.decorator'
 import { PaginationOptionsDto } from '../../../../common/pagination/dto/pagination-options.dto';
 import { QueryParamsDto } from '../../../../common/queries/query-params.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 @Controller()
 @ApiTags('Users')
 export class UsersController {
@@ -17,6 +18,8 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
+  @ApiBearerAuth()
+ @UseGuards(JwtAuthGuard)
   @Get()
   async findAll(
     @Query() paginationOptsDto: PaginationOptionsDto,

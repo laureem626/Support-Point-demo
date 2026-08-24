@@ -27,8 +27,8 @@ export class AuthController {
     schema: {
       type: 'object',
       properties: {
-        mobile: { type: 'string', example: '9876543210' },
-        password: { type: 'string', example: 'Password123!' },
+        mobile: { type: 'string', example: '255748031817' },
+        password: { type: 'string', example: '123456' },
       },
       required: ['mobile', 'password'],
     },
