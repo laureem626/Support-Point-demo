@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import {  Controller, Get, Post, Body, Param, ParseUUIDPipe, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { ProductsService } from '../services/product.service';
@@ -12,6 +12,7 @@ import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+//POST /api/products
   @Post()
   @ApiOperation({ summary: 'Create a product' })
   @ApiResponse({ status: 201, description: 'Product created successfully.' })
@@ -23,6 +24,7 @@ export class ProductsController {
     };
   }
 
+//GET /api/products
   @Get()
   @ApiOperation({ summary: 'List all products' })
   @ApiResponse({ status: 200, description: 'Products retrieved successfully.' })
@@ -34,12 +36,13 @@ export class ProductsController {
     };
   }
 
+//GET /api/products/:uuid
   @Get(':uuid')
   @ApiOperation({ summary: 'Get a product by UUID' })
   @ApiParam({ name: 'uuid', example: '123e4567-e89b-12d3-a456-426614174000', type: String })
   @ApiResponse({ status: 200, description: 'Product returned successfully.' })
   @ApiResponse({ status: 404, description: 'Product not found.' })
-  async findOne(@Param('uuid') uuid: string) {
+  async findOne(@Param('uuid', ParseUUIDPipe) uuid: string) {
     const product = await this.productsService.findOne(uuid);
     return {
       data: product,

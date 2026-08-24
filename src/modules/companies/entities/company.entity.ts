@@ -29,7 +29,7 @@ export class Company {
 
   @ManyToOne(() => Product, (product) => product.companies, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'productId' })
-  product: Product;
+  product!: Product;
 
   @Column({ nullable: true })
   link?: string;
