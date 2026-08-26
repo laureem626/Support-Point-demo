@@ -17,17 +17,21 @@ export class CompaniesService {
     createCompanyDto: CreateCompanyDto,
     user: User,
   ): Promise<Company> {
-    const saved = await this.companyRepository.save(
-      this.companyRepository.create({
-        ...createCompanyDto,
-        createdBy: user,
-        updatedBy: user,
-      }),
-    );
+    const newCompany = this.companyRepository.create({
+      ...createCompanyDto,
+      createdBy: user,
+      updatedBy: user,
+    });
+
+    const savedCompany = await this.companyRepository.save(newCompany);
 
     const company = await this.companyRepository.findOne({
-      where: { uuid: saved.uuid },
-      relations: { product: true },
+      where: { uuid: savedCompany.uuid },
+      relations: {
+        product: true,
+        createdBy: true,
+        updatedBy: true,
+      },
     });
 
     if (!company) {
@@ -38,19 +42,29 @@ export class CompaniesService {
   }
 
   async findAll(): Promise<Company[]> {
-    return this.companyRepository.find({
-      relations: { product: true },
+    return await this.companyRepository.find({
+      relations: {
+        product: true,
+        createdBy: true,
+        updatedBy: true,
+      },
     });
   }
 
   async findOne(uuid: string): Promise<Company> {
     const company = await this.companyRepository.findOne({
       where: { uuid },
-      relations: { product: true },
+      relations: {
+        product: true,
+        createdBy: true,
+        updatedBy: true,
+      },
     });
 
     if (!company) {
-      throw new NotFoundException(`Company with ID ${uuid} not found`);
+      throw new NotFoundException(
+        `Company with UUID ${uuid} not found`,
+      );
     }
 
     return company;
