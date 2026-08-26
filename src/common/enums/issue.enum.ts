@@ -7,10 +7,11 @@ export enum IssueStatus {
 }
 
 export enum Designation {
-  AT_SUPPORTER = 'AT_SUPPORTER',
-  AT_BA = 'AT_BA',
-  AT_DEVS = 'AT_DEVS',
-  AT_QA = 'AT_QA',
+  SUPPORTER = 'System_Supporter',
+  BA = 'Business_Analyst',
+  DEVS = 'Developer',
+  QA = 'Quality_Assurance',
+  SYSTEM_ADMIN = 'System_Admin', 
 
 }
 

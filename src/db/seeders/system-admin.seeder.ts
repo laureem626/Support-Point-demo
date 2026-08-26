@@ -21,7 +21,7 @@ export const seedSystemAdmin = async (dataSource: DataSource) => {
   const adminUser = userRepository.create({
     firstName: 'System',
     lastName: 'Administrator',
-    designation: Designation.AT_SUPPORTER,
+    designation: Designation.SYSTEM_ADMIN,
     mobile: adminMobile,
     isActive: true,
     password: hashedPassword,

@@ -14,6 +14,7 @@ import { IssueAssignment } from './issues-assignment.entity';
 import { Comment } from './comment.entity';
 import { User } from 'src/modules/users/entities/user.entity';
 import { Company } from 'src/modules/companies/entities/company.entity';
+import { Expose } from 'class-transformer';
 
 @Entity('issue')
 export class Issue {
@@ -24,8 +25,10 @@ export class Issue {
   @Generated('uuid')
   uuid: string;
 
-  @Column({ type: 'varchar', unique: true, nullable: false, default: '' })
-  number: string;
+  @Expose()
+    get Number(): string {
+      return `ISSUE-${String(this.id).padStart(4, '0')}`;
+    }
 
  @ManyToOne(() => Company, { nullable: false })
 @JoinColumn({

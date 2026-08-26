@@ -26,28 +26,47 @@ private readonly companyRepository: Repository<Company>,
     private readonly userRepository: Repository<User>,
    ) {}
 
-  async create(createIssueDto: CreateIssueDto, user: User) {
-    const { companyId, ...issueData } = createIssueDto;
+async create(createIssueDto: CreateIssueDto, user: User) {
+  const { companyId, ...issueData } = createIssueDto;
 
-    
-   const issue = this.issueRepository.create({
-    ...createIssueDto,
-    attachment: createIssueDto.attachment ?? null,
-    company: {
+  const company = await this.companyRepository.findOne({
+    where: {
       id: companyId,
     },
+  });
+
+  if (!company) {
+    throw new NotFoundException(
+      `Company with ID ${companyId} not found`,
+    );
+  }
+
+  const issue = this.issueRepository.create({
+    ...issueData,
+    attachment: createIssueDto.attachment ?? null,
+    company,
     createdBy: user,
     updatedBy: user,
   });
 
   const saved = await this.issueRepository.save(issue);
-  saved.number = `ISSUE-${String(saved.id).padStart(4, '0')}`;
-   await this.issueRepository.save(saved);
+
+  // Load the company relationship after saving
+  const result = await this.issueRepository.findOne({
+    where: {
+      id: saved.id,
+    },
+    relations: {
+      company: true,
+      createdBy: true,
+      updatedBy: true,
+    },
+  });
 
   return {
     status: 201,
     message: 'Issue reported successfully',
-    data: saved,
+    data: result,
   };
 }
 
@@ -106,15 +125,23 @@ async assignIssue(createAssignmentDto: CreateAssignmentDto) {
 
  //GET ALL ISSUES
   async findAll() {
-    const data = await this.issueRepository.find({
-      order: { id: 'DESC' },
-    });
-    return {
-      status: 200,
-      message: 'Issues retrieved successfully',
-      data,
-    };
-  }
+  const issues = await this.issueRepository.find({
+    relations: {
+      company: true,
+      createdBy: true,
+      updatedBy: true,
+    },
+    order: {
+      createdAt: 'DESC',
+    },
+  });
+
+  return {
+    status: 200,
+    message: 'Issues retrieved successfully',
+    data: issues,
+  };
+}
 
   //GET ISSUE AND IT DETAILS
   async findByUuid(uuid: string) {

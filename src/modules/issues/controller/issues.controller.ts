@@ -28,7 +28,7 @@ export class IssuesController {
   @Post()
   @ApiOperation({ summary: 'Create an issue' })
   @ApiResponse({ status: 201, description: 'Issue created successfully.' })
-  create(@Body() createIssueDto: CreateIssueDto, @Req() req) {
+  create(@Body() createIssueDto: CreateIssueDto, @Req() req:any) {
     return this.issuesService.create(createIssueDto, req.user);
   }
   @Post('comments')
