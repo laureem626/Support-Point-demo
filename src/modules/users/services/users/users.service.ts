@@ -99,4 +99,15 @@ export class UsersService {
 
     return user;
   }
+  async getUserProfile(uuid: string): Promise<User> {
+    const user = await this.usersRepository.findOne({
+      where: { uuid },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User not found`);
+    }
+
+    return user;
+  }
 }

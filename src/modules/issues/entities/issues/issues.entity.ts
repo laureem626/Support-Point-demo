@@ -13,6 +13,7 @@ import {
 import { IssueAssignment } from './issues-assignment.entity';
 import { Comment } from './comment.entity';
 import { User } from 'src/modules/users/entities/user.entity';
+import { Company } from 'src/modules/companies/entities/company.entity';
 
 @Entity('issue')
 export class Issue {
@@ -26,8 +27,12 @@ export class Issue {
   @Column({ type: 'varchar', unique: true, nullable: false, default: '' })
   number: string;
 
-  @Column({ name: 'company_id' })
-  companyId: number;
+ @ManyToOne(() => Company, { nullable: false })
+@JoinColumn({
+  name: 'company_id',
+  referencedColumnName: 'id',
+})
+company: Company;
 
   @Column({ name: 'reporter_name' })
   reporterName: string;

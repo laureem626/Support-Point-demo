@@ -32,7 +32,9 @@ export class AuthService {
         uuid: true,
         firstName: true,
         lastName: true,
+
         mobile: true,
+        designation: true,
         isActive: true,
         createdAt: true,
         password: true,
@@ -57,6 +59,7 @@ export class AuthService {
       mobile: user.mobile,
       isActive: user.isActive,
       createdAt: user.createdAt,
+      designation: user.designation,
     };
   }
 
@@ -76,6 +79,7 @@ export class AuthService {
       firstName: user.firstName,
       lastName: user.lastName,
       mobile: user.mobile,
+      designation: user.designation,
       isActive: user.isActive,
     };
 

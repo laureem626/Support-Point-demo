@@ -9,6 +9,7 @@ import { IssueAssignment } from '../../entities/issues/issues-assignment.entity'
 import { CreateAssignmentDto } from '../../dto/create.assignment.dto'; 
 import { User } from 'src/modules/users/entities/user.entity';
 import { Comment } from '../../entities/issues/comment.entity';
+import { Company } from 'src/modules/companies/entities/company.entity';
 
 @Injectable()
 export class IssuesService {
@@ -17,6 +18,8 @@ export class IssuesService {
     private readonly issueRepository: Repository<Issue>,
     @InjectRepository(Comment)
     private readonly commentRepository: Repository<Comment>,
+    @InjectRepository(Company)
+private readonly companyRepository: Repository<Company>,
     @InjectRepository(IssueAssignment)
     private readonly assignmentRepository: Repository<IssueAssignment>,
     @InjectRepository(User)
@@ -24,9 +27,15 @@ export class IssuesService {
    ) {}
 
   async create(createIssueDto: CreateIssueDto, user: User) {
+    const { companyId, ...issueData } = createIssueDto;
+
+    
    const issue = this.issueRepository.create({
     ...createIssueDto,
     attachment: createIssueDto.attachment ?? null,
+    company: {
+      id: companyId,
+    },
     createdBy: user,
     updatedBy: user,
   });
@@ -98,7 +107,7 @@ async assignIssue(createAssignmentDto: CreateAssignmentDto) {
  //GET ALL ISSUES
   async findAll() {
     const data = await this.issueRepository.find({
-      order: { id: 'ASC' },
+      order: { id: 'DESC' },
     });
     return {
       status: 200,
@@ -169,4 +178,5 @@ async getAssignment(uuid: string) {
 
   return assignment;
 }
+
 }

@@ -6,6 +6,7 @@ import { Issue } from './entities/issues/issues.entity';
 import { User } from '../users/entities/user.entity';
 import { IssueAssignment } from './entities/issues/issues-assignment.entity';
 import { Comment } from './entities/issues/comment.entity';
+import { Company } from '../companies/entities/company.entity';
 
 @Module({
    imports: [
@@ -13,6 +14,7 @@ import { Comment } from './entities/issues/comment.entity';
       Issue,
       Comment,
       IssueAssignment,
+      Company,
       User,
     ]),
   ],
