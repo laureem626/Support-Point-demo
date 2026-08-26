@@ -7,11 +7,12 @@ import {
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
-
 } from 'typeorm';
+
+import { Expose } from 'class-transformer';
+
 import { Product } from '../../products/entities/product.entity';
 import { User } from '../../users/entities/user.entity';
-
 
 @Entity('companies')
 export class Company {
@@ -25,22 +26,22 @@ export class Company {
   @Column()
   name: string;
 
-  @Column({ type: 'varchar', unique: true })
-  number: string;
+  @Expose()
+  get companyNumber(): string {
+    return `COMP-${String(this.id).padStart(4, '0')}`;
+  }
 
   @Column()
   productId: number;
 
-
-
-  @ManyToOne(() => Product, (product) => product.companies, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Product, (product) => product.companies, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'productId' })
   product: Product;
 
-  @Column({ nullable: true })
-  link?: string;
-
-
+  @Column({ nullable: false })
+  link: string;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -49,10 +50,10 @@ export class Company {
   updatedAt: Date;
 
   @ManyToOne(() => User, { nullable: false })
-  @JoinColumn({ name: 'created_by', referencedColumnName: 'uuid' })
+  @JoinColumn({ name: 'created_by', referencedColumnName: 'id' })
   createdBy: User;
 
   @ManyToOne(() => User, { nullable: false })
-  @JoinColumn({ name: 'updated_by', referencedColumnName: 'uuid' })
+  @JoinColumn({ name: 'updated_by', referencedColumnName: 'id' })
   updatedBy: User;
 }

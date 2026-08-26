@@ -7,6 +7,7 @@ export class CreateProductDto {
   @IsNotEmpty()
   name: string;
 
+
   @ApiPropertyOptional({
     example: 'A complete support platform for growing teams.',
   })
@@ -17,5 +18,5 @@ export class CreateProductDto {
   @ApiPropertyOptional({ example: 'https://supportpoint.example.com' })
   @IsUrl()
   @IsOptional()
-  link: string;
+  link?: string;
 }

@@ -10,10 +10,18 @@ export class ProductsService {
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
   ) {}
- async create(createProductDto: CreateProductDto): Promise<Product> {
-    const newProduct = this.productRepository.create(createProductDto);
-    return await this.productRepository.save(newProduct);
-  }
+ async create(
+  createProductDto: CreateProductDto,
+  userId: number,
+): Promise<Product> {
+  const newProduct = this.productRepository.create({
+    ...createProductDto,
+    createdBy: { id: userId },
+    updatedBy: { id: userId },
+  });
+
+  return await this.productRepository.save(newProduct);
+}
   async findAll(): Promise<Product[]> {
     return await this.productRepository.find();
   }
