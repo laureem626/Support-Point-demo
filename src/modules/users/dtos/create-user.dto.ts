@@ -16,24 +16,26 @@ export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
   @Length(2, 20)
-  firstName!: string;
+  firstName: string;
 
   @ApiProperty({ example: 'Doe' })
   @IsString()
   @IsNotEmpty()
   @Length(2, 20)
-  lastName!: string;
+  lastName: string;
 
-  @ApiProperty({ example: 'AT_SUPPORTER', enum: Designation })
+  @ApiProperty({ enum: Designation, })
   @IsEnum(Designation)
-  designation!: Designation;
+  @IsNotEmpty()
+  @Length(2, 20)
+  designation: Designation;
 
   @ApiProperty({ example: '987654321012' })
   @IsString()
   @Matches(/^\d{10,12}$/, { message: 'Mobile number must be 12 digits.' })
   @IsNotEmpty()
   @IsUnique('users_user')
-  mobile!: string;
+  mobile: string;
 
   @ApiProperty({ example: 'Password123!' })
   @MinLength(6, { message: 'Password must be at least 6 characters long.' })

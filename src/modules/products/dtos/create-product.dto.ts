@@ -12,10 +12,10 @@ export class CreateProductDto {
   })
   @IsString()
   @IsOptional()
-  description?: string;
+  description: string;
 
   @ApiPropertyOptional({ example: 'https://supportpoint.example.com' })
   @IsUrl()
   @IsOptional()
-  link?: string;
+  link: string;
 }

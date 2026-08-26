@@ -1,11 +1,11 @@
 import {  Controller, Get, Post, Body, Param, ParseUUIDPipe, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiAcceptedResponse, ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { ProductsService } from '../services/product.service';
 import { CreateProductDto } from '../dtos/create-product.dto';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 
-@Controller()
+@Controller('api/products')
 @ApiTags('Products')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()

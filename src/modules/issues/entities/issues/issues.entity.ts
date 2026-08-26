@@ -23,8 +23,8 @@ export class Issue {
   @Generated('uuid')
   uuid: string;
 
-  @Column({ type: 'int', unique: true })
-  number: number;
+  @Column({ type: 'varchar', unique: true, nullable: false, default: '' })
+  number: string;
 
   @Column({ name: 'company_id' })
   companyId: number;
@@ -59,18 +59,18 @@ export class Issue {
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  // Automatically updated whenever the issue is updated
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' } )
   updatedAt: Date;
 
   // ID of the user who created the issue
-  @ManyToOne(() => User, { nullable: true })
-@JoinColumn({ name: 'created_by', referencedColumnName: 'id' })
-createdBy: User | null;
+  @ManyToOne(() => User, { nullable: false })
+  @JoinColumn({ name: 'created_by', referencedColumnName: 'id' })
+  createdBy: User;
 
-@ManyToOne(() => User, { nullable: true })
-@JoinColumn({ name: 'updated_by', referencedColumnName: 'id' })
-updatedBy: User | null;
+  @ManyToOne(() => User, { nullable: false })
+  @JoinColumn({ name: 'updated_by', referencedColumnName: 'id' })
+  updatedBy: User;
 
   @OneToMany(() => Comment, 'issue')
   comments: Comment[];

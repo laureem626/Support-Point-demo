@@ -6,7 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_GUARD, RouterModule } from '@nestjs/core';
+import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { UsersModule } from '../users/users.module';
 import { UsersService } from '../users/services/users/users.service';
@@ -16,12 +16,7 @@ import { UsersService } from '../users/services/users/users.service';
     // Load environment variables
     ConfigModule.forRoot(),
 
-    RouterModule.register([
-      {
-        path: 'auth',
-        module: AuthModule,
-      },
-    ]),
+    
 
     UsersModule,
 

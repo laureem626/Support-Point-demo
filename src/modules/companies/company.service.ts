@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Company } from './entities/company.entity';
 import { CreateCompanyDto } from './dtos/create-company.dto';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class CompaniesService {
@@ -11,10 +12,13 @@ export class CompaniesService {
     private readonly companyRepository: Repository<Company>,
   ) {}
 
-  async create(createCompanyDto: CreateCompanyDto): Promise<Company> {
+  async create(createCompanyDto: CreateCompanyDto, user: User): Promise<Company> {
     const saved = await this.companyRepository.save(
-  this.companyRepository.create(createCompanyDto)
-);
+      this.companyRepository.create({ ...createCompanyDto, createdBy: user, updatedBy: user })
+    );
+
+    saved.number = `COMP-${String(saved.id).padStart(4, '0')}`;
+      await this.companyRepository.save(saved);
 
     const company = await this.companyRepository.findOne({
       where: { uuid: saved.uuid },

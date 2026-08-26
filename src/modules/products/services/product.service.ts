@@ -10,13 +10,10 @@ export class ProductsService {
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
   ) {}
-
-  async create(createProductDto: CreateProductDto): Promise<Product> {
+ async create(createProductDto: CreateProductDto): Promise<Product> {
     const newProduct = this.productRepository.create(createProductDto);
-    
     return await this.productRepository.save(newProduct);
   }
-
   async findAll(): Promise<Product[]> {
     return await this.productRepository.find();
   }

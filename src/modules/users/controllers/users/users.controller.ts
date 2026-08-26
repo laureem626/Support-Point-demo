@@ -7,7 +7,7 @@ import { PaginationOptionsDto } from '../../../../common/pagination/dto/paginati
 import { QueryParamsDto } from '../../../../common/queries/query-params.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
-@Controller()
+@Controller('api/users')
 @ApiTags('Users')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()

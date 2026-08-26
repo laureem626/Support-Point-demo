@@ -14,7 +14,7 @@ import { RefreshTokenDto } from '../../dtos/refresh-token/refresh-token.dto';
 import { Public } from '../../../../common/decorators/is-public-route.decorator';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
-@Controller()
+@Controller('api/auth')
 @ApiTags('Auth')
 export class AuthController {
   constructor(private authService: AuthService) { }

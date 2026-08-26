@@ -1,4 +1,4 @@
-import {Controller,Get,Post,Body,Param,HttpStatus,ParseUUIDPipe,UseGuards,} from '@nestjs/common';
+import {Controller,Get,Post,Body,Param,HttpStatus,ParseUUIDPipe,UseGuards, Req} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -6,7 +6,7 @@ import { CreateCompanyDto } from '../dtos/create-company.dto';
 import { CompaniesService } from '../company.service';
 
 @ApiTags('Companies')
-@Controller()
+@Controller('api/companies')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class CompaniesController {
@@ -16,8 +16,8 @@ export class CompaniesController {
   @Post()
   @ApiOperation({ summary: 'Create a new company' })
   @ApiResponse({ status: 201, description: 'Company created successfully' })
-  async create(@Body() createCompanyDto: CreateCompanyDto) {
-    const data = await this.companiesService.create(createCompanyDto);
+  async create(@Body() createCompanyDto: CreateCompanyDto, @Req() req: any) {
+    const data = await this.companiesService.create(createCompanyDto, req.user);
     return {
       status: HttpStatus.CREATED,
       message: 'Company created successfully',

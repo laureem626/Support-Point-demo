@@ -12,10 +12,10 @@ export class CreateCompanyDto {
   @IsNotEmpty()
   productId: number;
 
-  @ApiProperty({ example: 1 })
-  @IsNumber()
+  @ApiProperty({ example: 'COMP-0001' })
+  @IsString()
   @IsNotEmpty()
-  number: number;
+  number: string;
 
   @ApiPropertyOptional({ example: 'https://sptechnologies.example.com' })
   @IsUrl()

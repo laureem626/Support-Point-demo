@@ -25,7 +25,7 @@ export class User {
 
   @Column({
     type: 'enum',
-    enum: Designation, nullable: true,
+    enum: Designation, nullable: false,
   })
   designation: Designation;
 
