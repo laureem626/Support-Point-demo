@@ -19,7 +19,7 @@ export class CompaniesController {
   async create(@Body() createCompanyDto: CreateCompanyDto, @Req() req: any) {
     const data = await this.companiesService.create(createCompanyDto, req.user);
     return {
-      status: HttpStatus.CREATED,
+      statusCode: HttpStatus.CREATED,
       message: 'Company created successfully',
       data,
     };
@@ -32,7 +32,7 @@ export class CompaniesController {
   async findAll() {
     const data = await this.companiesService.findAll();
     return {
-      status: HttpStatus.OK,
+      statusCode: HttpStatus.OK,
       message: 'Companies retrieved successfully',
       data,
     };
@@ -45,7 +45,7 @@ export class CompaniesController {
   async findOne(@Param('uuid', ParseUUIDPipe) uuid: string) {
     const data = await this.companiesService.findOne(uuid);
     return {
-      status: HttpStatus.OK,
+      statusCode: HttpStatus.OK,
       data,
     };
   }
