@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   UseGuards,
   Request,
+  HttpStatus,
 } from '@nestjs/common';
 
 import {
@@ -26,7 +27,9 @@ import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+  ) {}
 
   // POST /api/products
   @Post()
@@ -45,6 +48,7 @@ export class ProductsController {
     );
 
     return {
+      statusCode: HttpStatus.CREATED,
       message: 'Product created successfully',
       data: product,
     };
@@ -61,7 +65,7 @@ export class ProductsController {
     const products = await this.productsService.findAll();
 
     return {
-      message: 'Products retrieved successfully',
+      
       data: products,
     };
   }
@@ -82,10 +86,14 @@ export class ProductsController {
     status: 404,
     description: 'Product not found.',
   })
-  async findOne(@Param('uuid', ParseUUIDPipe) uuid: string) {
+  async findOne(
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+  ) {
     const product = await this.productsService.findOne(uuid);
 
     return {
+      statusCode: HttpStatus.OK,
+      message: 'Product retrieved successfully',
       data: product,
     };
   }

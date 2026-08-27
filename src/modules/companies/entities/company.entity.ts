@@ -23,7 +23,7 @@ export class Company {
   @Generated('uuid')
   uuid: string;
 
-  @Column()
+  @Column({ type: 'varchar', unique: true })
   name: string;
 
   @Expose()

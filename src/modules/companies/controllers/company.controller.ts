@@ -4,6 +4,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CreateCompanyDto } from '../dtos/create-company.dto';
 import { CompaniesService } from '../company.service';
+import { Company } from '../entities/company.entity';
 
 @ApiTags('Companies')
 @Controller('api/companies')
@@ -32,16 +33,22 @@ export class CompaniesController {
   async findAll() {
     const data = await this.companiesService.findAll();
     return {
-      statusCode: HttpStatus.OK,
-      message: 'Companies retrieved successfully',
-      data,
+      
+      data: Company,
     };
   }
 
 // GET/api/companies/:uuid
   @Get(':uuid')
   @ApiOperation({ summary: 'Get company by UUID' })
-  @ApiResponse({ status: 200, description: 'Company retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Company returned successfully.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Company not found.',
+  })
   async findOne(@Param('uuid', ParseUUIDPipe) uuid: string) {
     const data = await this.companiesService.findOne(uuid);
     return {
