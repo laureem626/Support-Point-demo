@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException,BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { Issue } from '../../entities/issues/issues.entity';
 import { CreateIssueDto } from '../../dto/create-issue.dto';
 import { UpdateIssueStatusDto } from '../../dto/update-issue.dto';
@@ -10,6 +10,11 @@ import { CreateAssignmentDto } from '../../dto/create.assignment.dto';
 import { User } from 'src/modules/users/entities/user.entity';
 import { Comment } from '../../entities/issues/comment.entity';
 import { Company } from 'src/modules/companies/entities/company.entity';
+
+import { isUUID } from 'class-validator';
+import { SearchParams } from 'src/common/utils/searchparams.utils';
+import { paginate, buildPaginationResponse } from 'src/common/utils/pagination.utils';
+
 
 @Injectable()
 export class IssuesService {
@@ -56,17 +61,19 @@ async create(createIssueDto: CreateIssueDto, user: User) {
     where: {
       id: saved.id,
     },
-    relations: {
-      company: true,
-      createdBy: true,
-      updatedBy: true,
-    },
+   relations: {
+  company: {
+    product: true,
+  },
+  createdBy: true,
+  updatedBy: true,
+}
   });
 
   return {
     status: 201,
     message: 'Issue reported successfully',
-    data: result,
+   ...result,
   };
 }
 
@@ -82,12 +89,38 @@ async create(createIssueDto: CreateIssueDto, user: User) {
     throw new NotFoundException('Issue not found');
   }
 
+  const user = await this.userRepository.findOne({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new NotFoundException('User not found');
+  }
+
   const comment = this.commentRepository.create({
     issueId: issue.id,
-    userId,
+    userId: user.id,
     comments,
   });
-  return this.commentRepository.save(comment);
+  const saved = await this.commentRepository.save(comment);
+   const result = await this.commentRepository.findOne({
+    where: {
+      id: saved.id,
+    },
+    relations: {
+      user: true,
+      issue: true,
+    },
+  });
+
+  return {
+    status: 201,
+    message: 'Comment created successfully',
+   ...result,
+  };
+  
+
+  
 } 
 
  //POST /api/issues/assign
@@ -205,5 +238,84 @@ async getAssignment(uuid: string) {
 
   return assignment;
 }
+
+//Find my issue
+async findMyIssues(
+  userUuid: string,
+  searchParams: SearchParams,
+): Promise<any> {
+  const { searchTerm, page, pageSize } = searchParams;
+
+  // Validate user UUID
+  if (!isUUID(userUuid)) {
+    throw new BadRequestException('Invalid user UUID');
+  }
+
+  // Check that the user exists
+  const user = await this.userRepository.findOne({
+    where: { uuid: userUuid },
+  });
+
+  if (!user) {
+    throw new NotFoundException('User not found');
+  }
+
+  // Build query
+  const query = this.issueRepository
+    .createQueryBuilder('issue')
+    .leftJoinAndSelect('issue.createdBy', 'createdBy')
+    .leftJoinAndSelect('issue.updatedBy', 'updatedBy')
+     .leftJoinAndSelect('company.product', 'product')
+    .where('createdBy.uuid = :userUuid', { userUuid });
+
+  // Search
+  if (searchTerm) {
+    query.andWhere(
+      new Brackets((qb) => {
+        qb.where('CAST(issue.number AS TEXT) ILIKE :searchTerm', {
+          searchTerm: `%${searchTerm}%`,
+        })
+          .orWhere('issue.title ILIKE :searchTerm', {
+            searchTerm: `%${searchTerm}%`,
+          })
+          .orWhere('issue.description ILIKE :searchTerm', {
+            searchTerm: `%${searchTerm}%`,
+          })
+          .orWhere('issue.reporterName ILIKE :searchTerm', {
+            searchTerm: `%${searchTerm}%`,
+          })
+          .orWhere('issue.reporterMobile ILIKE :searchTerm', {
+            searchTerm: `%${searchTerm}%`,
+          })
+          .orWhere('CAST(issue.status AS TEXT) ILIKE :searchTerm', {
+            searchTerm: `%${searchTerm}%`,
+          })
+          .orWhere('CAST(issue.priority AS TEXT) ILIKE :searchTerm', {
+            searchTerm: `%${searchTerm}%`,
+          });
+      }),
+    );
+  }
+
+  // Latest issues first
+  query.orderBy('issue.createdAt', 'DESC');
+
+  // Pagination
+  paginate(query, page, pageSize);
+
+  // Execute query
+  const [issues, total] = await query.getManyAndCount();
+
+  // Return paginated response
+  return buildPaginationResponse(
+    issues,
+    total,
+    page,
+    pageSize,
+    '/issues/my-issues',
+  );
+}
+
+
 
 }

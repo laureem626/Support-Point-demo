@@ -26,7 +26,7 @@ export class Issue {
   uuid: string;
 
   @Expose()
-    get Number(): string {
+    get number(): string {
       return `ISSUE-${String(this.id).padStart(4, '0')}`;
     }
 
