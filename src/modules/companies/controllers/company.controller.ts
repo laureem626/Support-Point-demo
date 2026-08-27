@@ -34,7 +34,7 @@ export class CompaniesController {
     const data = await this.companiesService.findAll();
     return {
       
-      data: Company,
+      data,
     };
   }
 
