@@ -17,11 +17,12 @@ import { Company } from 'src/modules/companies/entities/company.entity';
 
 import { isUUID } from 'class-validator';
 import { SearchParams } from 'src/common/utils/searchparams.utils';
-import {
-  paginate,
-  buildPaginationResponse,
-} from 'src/common/utils/pagination.utils';
+
 import { instanceToPlain } from 'class-transformer';
+import { QueryParamsDto } from 'src/common/queries/query-params.dto';
+import { PaginationOptionsDto } from 'src/common/pagination/dto/pagination-options.dto';
+import { PaginationService } from 'src/common/pagination/pagination-service';
+import { validateAndSort } from 'src/common/utils/sort-queryset';
 
 @Injectable()
 export class IssuesService {
@@ -173,8 +174,7 @@ export class IssuesService {
     });
 
     return {
-      statusCode: 200,
-      message: 'Issues retrieved successfully',
+      
       data: issues,
     };
   }
@@ -245,16 +245,17 @@ export class IssuesService {
   //Find my issue
   async findMyIssues(
     userUuid: string,
-    searchParams: SearchParams,
-  ): Promise<any> {
-    const { searchTerm, page, pageSize } = searchParams;
+    queryParamsDto: QueryParamsDto,
+    paginationOptsDto: PaginationOptionsDto,
+  ) {
+    const { search, orderBy, sortOrder } = queryParamsDto;
 
-    // Validate user UUID
+    // Validate UUID
     if (!isUUID(userUuid)) {
       throw new BadRequestException('Invalid user UUID');
     }
 
-    // Check that the user exists
+    // Check if user exists
     const user = await this.userRepository.findOne({
       where: { uuid: userUuid },
     });
@@ -264,64 +265,61 @@ export class IssuesService {
     }
 
     // Build query
-    const query = this.issueRepository
+    const queryBuilder = this.issueRepository
       .createQueryBuilder('issue')
       .leftJoinAndSelect('issue.createdBy', 'createdBy')
       .leftJoinAndSelect('issue.updatedBy', 'updatedBy')
       .leftJoinAndSelect('issue.company', 'company')
       .leftJoinAndSelect('company.product', 'product')
-      .where('createdBy.uuid = :userUuid', { userUuid });
+      .where('createdBy.uuid = :userUuid', {
+        userUuid,
+      });
 
     // Search
-    if (searchTerm) {
-      query.andWhere(
+    if (search) {
+      queryBuilder.andWhere(
         new Brackets((qb) => {
-          qb.where('CAST(issue.number AS TEXT) ILIKE :searchTerm', {
-            searchTerm: `%${searchTerm}%`,
+          qb.where('issue.title ILIKE :search', {
+            search: `%${search}%`,
           })
-            .orWhere('issue.title ILIKE :searchTerm', {
-              searchTerm: `%${searchTerm}%`,
+            .orWhere('issue.description ILIKE :search', {
+              search: `%${search}%`,
             })
-            .orWhere('issue.description ILIKE :searchTerm', {
-              searchTerm: `%${searchTerm}%`,
+            .orWhere('issue.reporterName ILIKE :search', {
+              search: `%${search}%`,
             })
-            .orWhere('issue.reporterName ILIKE :searchTerm', {
-              searchTerm: `%${searchTerm}%`,
+            .orWhere('issue.reporterMobile ILIKE :search', {
+              search: `%${search}%`,
             })
-            .orWhere('issue.reporterMobile ILIKE :searchTerm', {
-              searchTerm: `%${searchTerm}%`,
+            .orWhere('CAST(issue.status AS TEXT) ILIKE :search', {
+              search: `%${search}%`,
             })
-            .orWhere('CAST(issue.status AS TEXT) ILIKE :searchTerm', {
-              searchTerm: `%${searchTerm}%`,
-            })
-            .orWhere('CAST(issue.priority AS TEXT) ILIKE :searchTerm', {
-              searchTerm: `%${searchTerm}%`,
+            .orWhere('CAST(issue.priority AS TEXT) ILIKE :search', {
+              search: `%${search}%`,
             });
         }),
       );
     }
 
-    // Latest issues first
-    query.orderBy('issue.createdAt', 'DESC');
+    // Sorting
+    await validateAndSort(
+      queryBuilder,
+      orderBy ?? 'createdAt',
+      sortOrder ?? 'DESC',
+      'issue',
+      [
+        'id',
+        'title',
+        'reporterName',
+        'reporterMobile',
+        'priority',
+        'status',
+        'createdAt',
+        'updatedAt',
+      ],
+    );
 
     // Pagination
-    paginate(query, page, pageSize);
-
-    // Execute query
-    const [issues, total] = await query.getManyAndCount();
-
-    // Return paginated response
-    const formattedIssues = issues.map((issue) => ({
-      ...issue,
-      number: `ISSUE-${String(issue.id).padStart(4, '0')}`,
-    }));
-
-    return buildPaginationResponse(
-      formattedIssues,
-      total,
-      page,
-      pageSize,
-      '/issues/my-issues',
-    );
+    return PaginationService.paginate(queryBuilder, paginationOptsDto);
   }
 }

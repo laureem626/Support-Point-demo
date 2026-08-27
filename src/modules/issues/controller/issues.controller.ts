@@ -24,6 +24,8 @@ import { CreateCommentDto } from '../dto/create-comment.dto';
 import { CreateAssignmentDto } from '../dto/create.assignment.dto';
 import { User } from 'src/modules/users/entities/user.entity';
 import { SearchParams } from 'src/common/utils/searchparams.utils';
+import { PaginationOptionsDto } from 'src/common/pagination/dto/pagination-options.dto';
+import { QueryParamsDto } from 'src/common/queries/query-params.dto';
 
 @Controller('api/issues')
 @ApiTags('Issues')
@@ -96,9 +98,17 @@ export class IssuesController {
   }
 
   @Get('my-issues')
-  async findMyIssues(@Req() req, @Query() searchParams: SearchParams) {
-    return this.issuesService.findMyIssues(req.user.uuid, searchParams);
-  }
+async findMyIssues(
+  @Req() req,
+  @Query() queryParamsDto: QueryParamsDto,
+  @Query() paginationOptsDto: PaginationOptionsDto,
+) {
+  return this.issuesService.findMyIssues(
+    req.user.uuid,
+    queryParamsDto,
+    paginationOptsDto,
+  );
+}
 
    @Get(':uuid')
   @ApiOperation({ summary: 'Retrieve an issue by UUID' })
