@@ -14,6 +14,7 @@ import { Company } from 'src/modules/companies/entities/company.entity';
 import { isUUID } from 'class-validator';
 import { SearchParams } from 'src/common/utils/searchparams.utils';
 import { paginate, buildPaginationResponse } from 'src/common/utils/pagination.utils';
+import { instanceToPlain } from 'class-transformer';
 
 
 @Injectable()
@@ -73,7 +74,7 @@ async create(createIssueDto: CreateIssueDto, user: User) {
   return {
     status: 201,
     message: 'Issue reported successfully',
-   ...result,
+   ...instanceToPlain(result),
   };
 }
 
@@ -116,7 +117,8 @@ async create(createIssueDto: CreateIssueDto, user: User) {
   return {
     status: 201,
     message: 'Comment created successfully',
-   ...result,
+    ...result,
+    
   };
   
 
@@ -265,6 +267,7 @@ async findMyIssues(
     .createQueryBuilder('issue')
     .leftJoinAndSelect('issue.createdBy', 'createdBy')
     .leftJoinAndSelect('issue.updatedBy', 'updatedBy')
+     .leftJoinAndSelect('issue.company', 'company')
      .leftJoinAndSelect('company.product', 'product')
     .where('createdBy.uuid = :userUuid', { userUuid });
 
@@ -307,13 +310,18 @@ async findMyIssues(
   const [issues, total] = await query.getManyAndCount();
 
   // Return paginated response
-  return buildPaginationResponse(
-    issues,
-    total,
-    page,
-    pageSize,
-    '/issues/my-issues',
-  );
+  const formattedIssues = issues.map((issue) => ({
+  ...issue,
+  number: `ISSUE-${String(issue.id).padStart(4, '0')}`,
+}));
+
+return buildPaginationResponse(
+  formattedIssues,
+  total,
+  page,
+  pageSize,
+  '/issues/my-issues',
+);
 }
 
 
