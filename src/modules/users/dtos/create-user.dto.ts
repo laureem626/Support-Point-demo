@@ -3,8 +3,8 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Designation } from 'src/common/enums/issue.enum';
 import {
   IsEnum,
+  
   IsNotEmpty,
-  IsOptional,
   IsString,
   Length,
   Matches,
