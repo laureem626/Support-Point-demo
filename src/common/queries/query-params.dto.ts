@@ -13,6 +13,7 @@ import {
 } from 'class-transformer';
 
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IssuePriority, IssueStatus } from '../enums/issue.enum';
 
 export enum SortOrder {
   ASC = 'ASC',
@@ -68,6 +69,14 @@ export class QueryParamsDto {
   @IsOptional()
   @IsEnum(SortOrder)
   sortOrder?: SortOrder = SortOrder.DESC;
+
+   @IsOptional()
+  @IsEnum(IssueStatus)
+  status?: IssueStatus;
+
+  @IsOptional()
+  @IsEnum(IssuePriority)
+  priority?: IssuePriority;
 
   @ApiPropertyOptional({
     description: 'Filter by active status',

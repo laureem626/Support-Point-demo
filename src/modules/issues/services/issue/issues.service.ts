@@ -167,7 +167,9 @@ export class IssuesService {
     search,
     orderBy = 'createdAt',
     sortOrder = 'DESC',
-    isActive,
+     status,
+  priority,
+    
   } = queryParamsDto;
 
   const queryBuilder = this.issueRepository
@@ -193,11 +195,17 @@ export class IssuesService {
   }
 
   // FILTER
-  if (isActive !== undefined) {
-    queryBuilder.andWhere('issue.isActive = :isActive', {
-      isActive,
-    });
-  }
+ if (status) {
+  queryBuilder.andWhere('issue.status = :status', {
+    status,
+  });
+}
+
+if (priority) {
+  queryBuilder.andWhere('issue.priority = :priority', {
+    priority,
+  });
+}
 
   // SORT
   queryBuilder.orderBy(
@@ -227,24 +235,29 @@ export class IssuesService {
 }
   //GET ISSUE AND IT DETAILS
   async findByUuid(uuid: string) {
-    const issue = await this.issueRepository.findOne({
-      where: { uuid },
-      relations: {
-        comments: true,
-        assignments: true,
+  const issue = await this.issueRepository.findOne({
+    where: { uuid },
+
+    relations: {
+      company: {
+        product: true,
       },
-    });
+      createdBy: true,
+      updatedBy: true,
+      comments: true,
+      assignments: true,
+    },
+  });
 
-    if (!issue) {
-      throw new NotFoundException(`Issue with UUID ${uuid} not found`);
-    }
-
-    return {
-      statusCode: 200,
-      data: issue,
-    };
+  if (!issue) {
+    throw new NotFoundException(`Issue with UUID ${uuid} not found`);
   }
 
+  return {
+    statusCode: 200,
+    data: issue,
+  };
+}
   //UPDATE ISSUE STATUS
   async updateStatusByUuid(uuid: string, updateDto: UpdateIssueStatusDto) {
     const issue = await this.issueRepository.findOne({ where: { uuid } });
