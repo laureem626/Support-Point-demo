@@ -91,7 +91,7 @@ export class IssuesController {
     example: 10,
   })
   @Get()
-  @ApiOperation({ summary: 'Retrieve all issues' })
+  @ApiOperation({ summary: 'Get all issues' })
   @ApiResponse({ status: 201, description: 'Issues retrieved successfully.' })
   async findAll(
     @Query() queryParamsDto: QueryParamsDto,
@@ -140,7 +140,7 @@ export class IssuesController {
   }
 
   @Get(':uuid')
-  @ApiOperation({ summary: 'Retrieve an issue by UUID' })
+  @ApiOperation({ summary: 'Get an issue by UUID' })
   @ApiResponse({ status: 201, description: 'Issue retrieved successfully.' })
   findByUuid(@Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.issuesService.findByUuid(uuid);

@@ -1,3 +1,6 @@
+import { IsUnique } from '../../../common/validators/is-unique.validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { Designation } from 'src/common/enums/issue.enum';
 import {
   IsEnum,
   IsNotEmpty,
@@ -7,10 +10,6 @@ import {
   Matches,
   MinLength,
 } from 'class-validator';
-import { IsUnique } from '../../../common/validators/is-unique.validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { Designation } from 'src/common/enums/issue.enum';
-
 export class CreateUserDto {
   @ApiProperty({ example: 'John' })
   @IsString()

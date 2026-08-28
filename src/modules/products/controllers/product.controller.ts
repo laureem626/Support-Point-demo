@@ -1,3 +1,8 @@
+import { ProductsService } from '../services/product.service';
+import { CreateProductDto } from '../dtos/create-product.dto';
+import { QueryParamsDto } from '../../../common/queries/query-params.dto';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
+import {ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags,} from '@nestjs/swagger';
 import {
   Controller,
   Get,
@@ -10,20 +15,6 @@ import {
   HttpStatus,
   Query,
 } from '@nestjs/common';
-
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiParam,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
-
-import { ProductsService } from '../services/product.service';
-import { CreateProductDto } from '../dtos/create-product.dto';
-import { QueryParamsDto } from '../../../common/queries/query-params.dto';
-import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
-
 @Controller('api/products')
 @ApiTags('Products')
 @UseGuards(JwtAuthGuard)

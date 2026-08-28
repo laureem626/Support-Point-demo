@@ -1,10 +1,7 @@
 import { Company } from '../../companies/entities/company.entity';
 import { User } from '../../users/entities/user.entity';
-
 import type { Relation } from 'typeorm';
-
 import { Expose } from 'class-transformer';
-
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -16,7 +13,6 @@ import {
   UpdateDateColumn,
   CreateDateColumn,
 } from 'typeorm';
-
 @Entity('products')
 export class Product {
   @PrimaryGeneratedColumn()

@@ -1,3 +1,6 @@
+import { Transform, Type } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IssuePriority, IssueStatus } from '../enums/issue.enum';
 import {
   IsOptional,
   IsString,
@@ -6,20 +9,10 @@ import {
   IsPositive,
   IsBoolean,
 } from 'class-validator';
-
-import {
-  Transform,
-  Type,
-} from 'class-transformer';
-
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IssuePriority, IssueStatus } from '../enums/issue.enum';
-
 export enum SortOrder {
   ASC = 'ASC',
   DESC = 'DESC',
 }
-
 export class QueryParamsDto {
   @ApiPropertyOptional({
     description: 'General search text',
@@ -69,11 +62,19 @@ export class QueryParamsDto {
   @IsOptional()
   @IsEnum(SortOrder)
   sortOrder?: SortOrder = SortOrder.DESC;
-
-   @IsOptional()
+  @ApiPropertyOptional({
+    description: 'Filter by issue status',
+    example: 'OPEN',
+    enum: IssueStatus,
+  })
+  @IsOptional()
   @IsEnum(IssueStatus)
   status?: IssueStatus;
-
+  @ApiPropertyOptional({
+    description: 'Filter by issue priority',
+    example: 'low',
+    enum: IssuePriority,
+  })
   @IsOptional()
   @IsEnum(IssuePriority)
   priority?: IssuePriority;

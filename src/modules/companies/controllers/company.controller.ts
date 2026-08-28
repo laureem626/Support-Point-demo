@@ -1,3 +1,8 @@
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { CreateCompanyDto } from '../dtos/create-company.dto';
+import { CompaniesService } from '../company.service';
+import { QueryParamsDto } from '../../../common/queries/query-params.dto';
+import {ApiTags, ApiOperation, ApiResponse, ApiBearerAuth,} from '@nestjs/swagger';
 import {
   Controller,
   Get,
@@ -10,22 +15,6 @@ import {
   Req,
   Query,
 } from '@nestjs/common';
-
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
-
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-
-import { CreateCompanyDto } from '../dtos/create-company.dto';
-
-import { CompaniesService } from '../company.service';
-
-import { QueryParamsDto } from '../../../common/queries/query-params.dto';
-
 @ApiTags('Companies')
 @Controller('api/companies')
 @UseGuards(JwtAuthGuard)

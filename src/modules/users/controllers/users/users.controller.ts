@@ -1,4 +1,3 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { UsersService } from '../../services/users/users.service';
 import { CreateUserDto } from '../../dtos/create-user.dto';
 import { User } from '../../entities/user.entity';
@@ -7,6 +6,16 @@ import { PaginationOptionsDto } from '../../../../common/pagination/dto/paginati
 import { QueryParamsDto } from '../../../../common/queries/query-params.dto';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
+import { 
+  Body, 
+  Controller, 
+  Get, 
+  Param, 
+  ParseUUIDPipe, 
+  Post, 
+  Query, 
+  UseGuards, 
+} from '@nestjs/common';
 @Controller('api/users')
 @ApiTags('Users')
 @UseGuards(JwtAuthGuard)

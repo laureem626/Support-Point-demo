@@ -1,19 +1,11 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-
+import {ConflictException, Injectable, NotFoundException,} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-
 import { Product } from '../entities/product.entity';
 import { CreateProductDto } from '../dtos/create-product.dto';
-
 import { User } from '../../users/entities/user.entity';
 import { QueryParamsDto } from '../../../common/queries/query-params.dto';
 import { PaginationService } from '../../../common/pagination/pagination-service';
-
 @Injectable()
 export class ProductsService {
   constructor(

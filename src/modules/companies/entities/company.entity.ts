@@ -1,3 +1,6 @@
+import { Expose } from 'class-transformer';
+import { Product } from '../../products/entities/product.entity';
+import { User } from '../../users/entities/user.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -8,12 +11,6 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
-
-import { Expose } from 'class-transformer';
-
-import { Product } from '../../products/entities/product.entity';
-import { User } from '../../users/entities/user.entity';
-
 @Entity('companies')
 export class Company {
   @PrimaryGeneratedColumn()
