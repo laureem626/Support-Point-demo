@@ -30,7 +30,7 @@ export class Product {
   name: string;
 
   @Expose()
-  get productNumber(): string {
+  get number(): string {
     return `PR-${String(this.id).padStart(4, '0')}`;
   }
 

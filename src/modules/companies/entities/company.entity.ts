@@ -27,7 +27,7 @@ export class Company {
   name: string;
 
   @Expose()
-  get companyNumber(): string {
+  get number(): string {
     return `COMP-${String(this.id).padStart(4, '0')}`;
   }
 

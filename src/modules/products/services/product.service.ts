@@ -1,10 +1,18 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { Product } from '../entities/product.entity';
 import { CreateProductDto } from '../dtos/create-product.dto';
+
 import { User } from '../../users/entities/user.entity';
+import { QueryParamsDto } from '../../../common/queries/query-params.dto';
+import { PaginationService } from '../../../common/pagination/pagination-service';
 
 @Injectable()
 export class ProductsService {
@@ -16,32 +24,26 @@ export class ProductsService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async create(
-    createProductDto: CreateProductDto,
-    userId: number,
-  ) {
+  async create(createProductDto: CreateProductDto, userId: number) {
     const user = await this.userRepository.findOne({
       where: { id: userId },
     });
 
     if (!user) {
-      throw new NotFoundException(
-        `User with ID ${userId} not found`,
-      );
+      throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-     const existingProduct = await this.productRepository.findOne({
-    where: {
-      name: createProductDto.name,
-    },
-  });
+    const existingProduct = await this.productRepository.findOne({
+      where: {
+        name: createProductDto.name,
+      },
+    });
 
-  if (existingProduct) {
-    throw new ConflictException(
-      `Product "${createProductDto.name}" already exists`,
-    );
-  }
-  
+    if (existingProduct) {
+      throw new ConflictException(
+        `Product "${createProductDto.name}" already exists`,
+      );
+    }
 
     const newProduct = this.productRepository.create({
       ...createProductDto,
@@ -52,7 +54,9 @@ export class ProductsService {
     const savedProduct = await this.productRepository.save(newProduct);
 
     const product = await this.productRepository.findOne({
-      where: { id: savedProduct.id },
+      where: {
+        id: savedProduct.id,
+      },
       relations: {
         createdBy: true,
         updatedBy: true,
@@ -60,23 +64,49 @@ export class ProductsService {
     });
 
     if (!product) {
-      throw new NotFoundException(
-        'Product could not be retrieved',
-      );
+      throw new NotFoundException('Product could not be retrieved');
     }
 
     return product;
   }
 
-  async findAll() {
-    const products = await this.productRepository.find({
-      relations: {
-        createdBy: true,
-        updatedBy: true,
-      },
-    });
+  async findAll(query: QueryParamsDto) {
+    const queryBuilder = this.productRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.createdBy', 'createdBy')
+      .leftJoinAndSelect('product.updatedBy', 'updatedBy');
 
-    return products;
+    // Search by product name OR product number
+    if (query.search) {
+      const search = query.search.trim();
+
+      if (/^PR-\d+$/i.test(search)) {
+        // Example: PR-0001 -> product ID 1
+        const productId = Number(search.toUpperCase().replace('PR-', ''));
+
+        queryBuilder.andWhere('product.id = :productId', {
+          productId,
+        });
+      } else {
+        // Search product name
+        queryBuilder.andWhere('product.name ILIKE :search', {
+          search: `%${search}%`,
+        });
+      }
+    }
+
+    // Allowed sorting columns
+    const allowedOrderBy = ['id', 'name', 'createdAt', 'updatedAt'];
+
+    const orderBy = allowedOrderBy.includes(query.orderBy ?? '')
+      ? query.orderBy
+      : 'createdAt';
+
+    // Sorting
+    queryBuilder.orderBy(`product.${orderBy}`, query.sortOrder ?? 'DESC');
+
+    // Pagination
+    return PaginationService.paginate(queryBuilder, query);
   }
 
   async findOne(uuid: string) {
@@ -89,9 +119,7 @@ export class ProductsService {
     });
 
     if (!product) {
-      throw new NotFoundException(
-        `Product with UUID ${uuid} not found`,
-      );
+      throw new NotFoundException(`Product with UUID ${uuid} not found`);
     }
 
     return product;

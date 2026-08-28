@@ -8,6 +8,7 @@ import {
   UseGuards,
   Request,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 
 import {
@@ -20,6 +21,7 @@ import {
 
 import { ProductsService } from '../services/product.service';
 import { CreateProductDto } from '../dtos/create-product.dto';
+import { QueryParamsDto } from '../../../common/queries/query-params.dto';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 
 @Controller('api/products')
@@ -27,13 +29,13 @@ import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ProductsController {
-  constructor(
-    private readonly productsService: ProductsService,
-  ) {}
+  constructor(private readonly productsService: ProductsService) {}
 
   // POST /api/products
   @Post()
-  @ApiOperation({ summary: 'Create a product' })
+  @ApiOperation({
+    summary: 'Create a product',
+  })
   @ApiResponse({
     status: 201,
     description: 'Product created successfully.',
@@ -56,23 +58,27 @@ export class ProductsController {
 
   // GET /api/products
   @Get()
-  @ApiOperation({ summary: 'List all products' })
+  @ApiOperation({
+    summary: 'List products with pagination and filters',
+  })
   @ApiResponse({
     status: 200,
     description: 'Products retrieved successfully.',
   })
-  async findAll() {
-    const products = await this.productsService.findAll();
+  async findAll(@Query() query: QueryParamsDto) {
+    const result = await this.productsService.findAll(query);
 
     return {
-      
-      data: products,
+      data: result.data,
+      meta: result.meta,
     };
   }
 
   // GET /api/products/:uuid
   @Get(':uuid')
-  @ApiOperation({ summary: 'Get a product by UUID' })
+  @ApiOperation({
+    summary: 'Get a product by UUID',
+  })
   @ApiParam({
     name: 'uuid',
     example: '123e4567-e89b-12d3-a456-426614174000',
@@ -86,9 +92,7 @@ export class ProductsController {
     status: 404,
     description: 'Product not found.',
   })
-  async findOne(
-    @Param('uuid', ParseUUIDPipe) uuid: string,
-  ) {
+  async findOne(@Param('uuid', ParseUUIDPipe) uuid: string) {
     const product = await this.productsService.findOne(uuid);
 
     return {

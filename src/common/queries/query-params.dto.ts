@@ -6,33 +6,73 @@ import {
   IsPositive,
   IsBoolean,
 } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
 
-enum SortOrder {
+import {
+  Transform,
+  Type,
+} from 'class-transformer';
+
+import { ApiPropertyOptional } from '@nestjs/swagger';
+
+export enum SortOrder {
   ASC = 'ASC',
   DESC = 'DESC',
 }
 
 export class QueryParamsDto {
+  @ApiPropertyOptional({
+    description: 'General search text',
+    example: 'Support',
+  })
   @IsOptional()
   @IsString()
   search?: string;
 
+  @ApiPropertyOptional({
+    description: 'Page number',
+    example: 1,
+    default: 1,
+  })
   @IsOptional()
   @IsInt()
   @IsPositive()
   @Type(() => Number)
   page?: number = 1;
 
-  //Sorting and Ordering
+  @ApiPropertyOptional({
+    description: 'Number of items per page',
+    example: 10,
+    default: 10,
+  })
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  @Type(() => Number)
+  pageSize?: number = 10;
+
+  @ApiPropertyOptional({
+    description: 'Field to sort by',
+    example: 'createdAt',
+    default: 'createdAt',
+  })
   @IsOptional()
   @IsString()
   orderBy?: string = 'createdAt';
 
+  @ApiPropertyOptional({
+    description: 'Sort order',
+    enum: SortOrder,
+    example: SortOrder.DESC,
+    default: SortOrder.DESC,
+  })
   @IsOptional()
   @IsEnum(SortOrder)
   sortOrder?: SortOrder = SortOrder.DESC;
 
+  @ApiPropertyOptional({
+    description: 'Filter by active status',
+    example: true,
+  })
   @IsOptional()
   @IsBoolean()
   @Transform(
@@ -40,6 +80,7 @@ export class QueryParamsDto {
       if (typeof value === 'string') {
         return value.toLowerCase() === 'true';
       }
+
       return undefined;
     },
     { toClassOnly: true },

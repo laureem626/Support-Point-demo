@@ -5,16 +5,16 @@ import {
 } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
-
 import { Repository } from 'typeorm';
 
 import { Company } from './entities/company.entity';
-
 import { CreateCompanyDto } from './dtos/create-company.dto';
 
 import { User } from '../users/entities/user.entity';
-
 import { Product } from '../products/entities/product.entity';
+
+import { QueryParamsDto } from '../../common/queries/query-params.dto';
+import { PaginationService } from '../../common/pagination/pagination-service';
 
 @Injectable()
 export class CompaniesService {
@@ -30,13 +30,13 @@ export class CompaniesService {
     createCompanyDto: CreateCompanyDto,
     user: User,
   ): Promise<Company> {
-
     // Check Product first
-    const product = await this.productRepository.findOne({
-      where: {
-        id: createCompanyDto.productId,
-      },
-    });
+    const product =
+      await this.productRepository.findOne({
+        where: {
+          id: createCompanyDto.productId,
+        },
+      });
 
     if (!product) {
       throw new NotFoundException(
@@ -45,11 +45,12 @@ export class CompaniesService {
     }
 
     // Check Company after Product exists
-    const existingCompany = await this.companyRepository.findOne({
-      where: {
-        name: createCompanyDto.name,
-      },
-    });
+    const existingCompany =
+      await this.companyRepository.findOne({
+        where: {
+          name: createCompanyDto.name,
+        },
+      });
 
     if (existingCompany) {
       throw new ConflictException(
@@ -58,27 +59,29 @@ export class CompaniesService {
     }
 
     // Create Company
-    const newCompany = this.companyRepository.create({
-      ...createCompanyDto,
-      product: product,
-      createdBy: user,
-      updatedBy: user,
-    });
+    const newCompany =
+      this.companyRepository.create({
+        ...createCompanyDto,
+        product: product,
+        createdBy: user,
+        updatedBy: user,
+      });
 
     const savedCompany =
       await this.companyRepository.save(newCompany);
 
     // Get created Company with relations
-    const company = await this.companyRepository.findOne({
-      where: {
-        uuid: savedCompany.uuid,
-      },
-      relations: {
-        product: true,
-        createdBy: true,
-        updatedBy: true,
-      },
-    });
+    const company =
+      await this.companyRepository.findOne({
+        where: {
+          uuid: savedCompany.uuid,
+        },
+        relations: {
+          product: true,
+          createdBy: true,
+          updatedBy: true,
+        },
+      });
 
     if (!company) {
       throw new NotFoundException(
@@ -89,27 +92,95 @@ export class CompaniesService {
     return company;
   }
 
-  async findAll(): Promise<Company[]> {
-    return await this.companyRepository.find({
-      relations: {
-        product: true,
-        createdBy: true,
-        updatedBy: true,
-      },
-    });
+  async findAll(query: QueryParamsDto) {
+    const queryBuilder =
+      this.companyRepository
+        .createQueryBuilder('company')
+        .leftJoinAndSelect(
+          'company.product',
+          'product',
+        )
+        .leftJoinAndSelect(
+          'company.createdBy',
+          'createdBy',
+        )
+        .leftJoinAndSelect(
+          'company.updatedBy',
+          'updatedBy',
+        );
+
+    // Search by company name OR company number
+    if (query.search) {
+      const search = query.search.trim();
+
+      if (/^COMP-\d+$/i.test(search)) {
+        // Example:
+        // COMP-0001 -> company ID 1
+        const companyId = Number(
+          search
+            .toUpperCase()
+            .replace('COMP-', ''),
+        );
+
+        queryBuilder.andWhere(
+          'company.id = :companyId',
+          {
+            companyId,
+          },
+        );
+      } else {
+        // Search company name
+        queryBuilder.andWhere(
+          'company.name ILIKE :search',
+          {
+            search: `%${search}%`,
+          },
+        );
+      }
+    }
+
+    // Allowed sorting columns
+    const allowedOrderBy = [
+      'id',
+      'name',
+      'createdAt',
+      'updatedAt',
+    ];
+
+    const orderBy =
+      allowedOrderBy.includes(
+        query.orderBy ?? '',
+      )
+        ? query.orderBy
+        : 'createdAt';
+
+    // Sorting
+    queryBuilder.orderBy(
+      `company.${orderBy}`,
+      query.sortOrder ?? 'DESC',
+    );
+
+    // Pagination
+    return PaginationService.paginate(
+      queryBuilder,
+      query,
+    );
   }
 
-  async findOne(uuid: string): Promise<Company> {
-    const company = await this.companyRepository.findOne({
-      where: {
-        uuid,
-      },
-      relations: {
-        product: true,
-        createdBy: true,
-        updatedBy: true,
-      },
-    });
+  async findOne(
+    uuid: string,
+  ): Promise<Company> {
+    const company =
+      await this.companyRepository.findOne({
+        where: {
+          uuid,
+        },
+        relations: {
+          product: true,
+          createdBy: true,
+          updatedBy: true,
+        },
+      });
 
     if (!company) {
       throw new NotFoundException(

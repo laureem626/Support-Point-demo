@@ -7,7 +7,6 @@ export class CreateProductDto {
   @IsNotEmpty()
   name: string;
 
-
   @ApiPropertyOptional({
     example: 'A complete support platform for growing teams.',
   })

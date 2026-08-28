@@ -18,7 +18,7 @@ export class PaginationService {
     const meta = new PageMetaDto({
       pageOptionsDto,
       itemCount,
-      baseUrl: 'process.env.APP_URL',
+      baseUrl: 'process.env.APP_URL!',
     });
 
     return {
