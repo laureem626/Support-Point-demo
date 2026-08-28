@@ -82,7 +82,7 @@ export class IssuesService {
     };
   }
 
-  //POST AN ISSUE
+  //POST A COMMENT WITHIN AN ISSUE
   async createComment(createCommentDto: CreateCommentDto) {
     const { userId, issueId, comments } = createCommentDto;
 
@@ -159,26 +159,72 @@ export class IssuesService {
   }
 
   //GET ALL ISSUES
-  async findAll() {
-    const issues = await this.issueRepository.find({
-      relations: {
-        company: {
-          product: true,
-        },
-        createdBy: true,
-        updatedBy: true,
-      },
-      order: {
-        createdAt: 'DESC',
-      },
-    });
+  async findAll(
+  queryParamsDto: QueryParamsDto,
+  paginationOptsDto: PaginationOptionsDto,
+) {
+  const {
+    search,
+    orderBy = 'createdAt',
+    sortOrder = 'DESC',
+    isActive,
+  } = queryParamsDto;
 
-    return {
-      
-      data: issues,
-    };
+  const queryBuilder = this.issueRepository
+    .createQueryBuilder('issue')
+    .leftJoinAndSelect('issue.company', 'company')
+    .leftJoinAndSelect('company.product', 'product')
+    .leftJoinAndSelect('issue.createdBy', 'createdBy')
+    .leftJoinAndSelect('issue.updatedBy', 'updatedBy');
+
+  // SEARCH
+  if (search) {
+    queryBuilder.andWhere(
+      `(
+        issue.title ILIKE :search OR
+        issue.description ILIKE :search OR
+        issue.reporterName ILIKE :search OR
+        issue.reporterMobile ILIKE :search
+      )`,
+      {
+        search: `%${search}%`,
+      },
+    );
   }
 
+  // FILTER
+  if (isActive !== undefined) {
+    queryBuilder.andWhere('issue.isActive = :isActive', {
+      isActive,
+    });
+  }
+
+  // SORT
+  queryBuilder.orderBy(
+    `issue.${orderBy}`,
+    sortOrder === 'ASC' ? 'ASC' : 'DESC',
+  );
+
+  // PAGINATION
+  const page = paginationOptsDto.page || 1;
+  const limit = paginationOptsDto.pageSize || 10;
+
+  const skip = (page - 1) * limit;
+
+  queryBuilder.skip(skip).take(limit);
+
+  const [issues, total] = await queryBuilder.getManyAndCount();
+
+  return {
+    data: issues,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
   //GET ISSUE AND IT DETAILS
   async findByUuid(uuid: string) {
     const issue = await this.issueRepository.findOne({
@@ -266,14 +312,18 @@ export class IssuesService {
 
     // Build query
     const queryBuilder = this.issueRepository
-      .createQueryBuilder('issue')
-      .leftJoinAndSelect('issue.createdBy', 'createdBy')
-      .leftJoinAndSelect('issue.updatedBy', 'updatedBy')
-      .leftJoinAndSelect('issue.company', 'company')
-      .leftJoinAndSelect('company.product', 'product')
-      .where('createdBy.uuid = :userUuid', {
-        userUuid,
-      });
+    .createQueryBuilder('issue')
+    .leftJoinAndSelect('issue.createdBy', 'createdBy')
+    .leftJoinAndSelect('issue.updatedBy', 'updatedBy')
+    .leftJoinAndSelect('issue.company', 'company')
+    .leftJoinAndSelect('company.product', 'product')
+    .innerJoin(
+      'issue.assignments',
+      'assignment',
+    )
+    .where('assignment.userId = :userId', {
+      userId: user.id,
+    });
 
     // Search
     if (search) {

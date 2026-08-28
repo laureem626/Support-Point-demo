@@ -17,6 +17,7 @@ import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import {
   ApiBearerAuth,
   ApiOperation,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -76,13 +77,28 @@ export class IssuesController {
     return this.issuesService.getAssignment(uuid);
   }
 
+  //GET ALL ISSUES WITH PAGINATION AND FILTERING
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+    example: 10,
+  })
   @Get()
   @ApiOperation({ summary: 'Retrieve all issues' })
   @ApiResponse({ status: 201, description: 'Issues retrieved successfully.' })
-  findAll() {
-    return this.issuesService.findAll();
+  async findAll(
+    @Query() queryParamsDto: QueryParamsDto,
+    @Query() paginationOptsDto: PaginationOptionsDto,
+  ) {
+    return this.issuesService.findAll(queryParamsDto, paginationOptsDto);
   }
-
 
   @Patch(':uuid')
   @ApiOperation({ summary: 'Update issue status by UUID' })
@@ -97,20 +113,33 @@ export class IssuesController {
     return this.issuesService.updateStatusByUuid(uuid, updateDto);
   }
 
-  @Get('my-issues')
-async findMyIssues(
-  @Req() req,
-  @Query() queryParamsDto: QueryParamsDto,
-  @Query() paginationOptsDto: PaginationOptionsDto,
-) {
-  return this.issuesService.findMyIssues(
-    req.user.uuid,
-    queryParamsDto,
-    paginationOptsDto,
-  );
-}
+  //GET MY ISSUES
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+    example: 10,
+  })
+  @Get('my-assigned-issues')
+  async findMyIssues(
+    @Req() req,
+    @Query() queryParamsDto: QueryParamsDto,
+    @Query() paginationOptsDto: PaginationOptionsDto,
+  ) {
+    return this.issuesService.findMyIssues(
+      req.user.uuid,
+      queryParamsDto,
+      paginationOptsDto,
+    );
+  }
 
-   @Get(':uuid')
+  @Get(':uuid')
   @ApiOperation({ summary: 'Retrieve an issue by UUID' })
   @ApiResponse({ status: 201, description: 'Issue retrieved successfully.' })
   findByUuid(@Param('uuid', ParseUUIDPipe) uuid: string) {
