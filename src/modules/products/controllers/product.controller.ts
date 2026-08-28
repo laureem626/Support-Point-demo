@@ -59,7 +59,7 @@ export class ProductsController {
   // GET /api/products
   @Get()
   @ApiOperation({
-    summary: 'List products with pagination and filters',
+    summary: 'Get all products',
   })
   @ApiResponse({
     status: 200,

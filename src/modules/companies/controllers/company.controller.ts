@@ -55,7 +55,7 @@ export class CompaniesController {
   // GET /api/companies
   @Get()
   @ApiOperation({
-    summary: 'Get companies with pagination and filters',
+    summary: 'Get all companies',
   })
   @ApiResponse({
     status: 200,
