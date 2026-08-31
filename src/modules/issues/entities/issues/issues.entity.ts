@@ -85,6 +85,11 @@ export class Issue {
   @JoinColumn({ name: 'updated_by', referencedColumnName: 'id' })
   updatedBy: User;
 
+
+   @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'closed_by', referencedColumnName: 'id' })
+  closedBy: User;
+
   @OneToMany(() => Comment, 'issue')
   comments: Comment[];
 

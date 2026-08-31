@@ -65,7 +65,7 @@ export class IssuesController {
     example: 10,
   })
   @Get()
-  @ApiOperation({ summary: 'Retrieve all issues' })
+  @ApiOperation({ summary: 'Get all issues' })
   @ApiResponse({ status: 201, description: 'Issues retrieved successfully.' })
   async findAll(
     @Query() queryParamsDto: QueryParamsDto,
@@ -75,18 +75,17 @@ export class IssuesController {
   }
 
   @Patch(':uuid')
-  @ApiOperation({ summary: 'Update issue status by UUID' })
+  @ApiOperation({ summary: 'Close issue' })
   @ApiResponse({
     status: 201,
     description: 'Issue status updated successfully.',
   })
-  updateStatus(
+  closeIssue(
     @Param('uuid', ParseUUIDPipe) uuid: string,
     @Body() updateDto: UpdateIssueStatusDto,
-  @Req() req,
-
+    @Req() req,
   ) {
-    return this.issuesService.updateStatusByUuid(uuid, updateDto,req.user.uuid );
+    return this.issuesService.closeIssue(uuid, updateDto,req.user.uuid );
   }
 
   //GET MY ISSUES
@@ -116,7 +115,7 @@ export class IssuesController {
   }
 
   @Get(':uuid')
-  @ApiOperation({ summary: 'Retrieve an issue by UUID' })
+  @ApiOperation({ summary: 'Get an issue by UUID' })
   @ApiResponse({ status: 201, description: 'Issue retrieved successfully.' })
   findByUuid(@Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.issuesService.findByUuid(uuid);

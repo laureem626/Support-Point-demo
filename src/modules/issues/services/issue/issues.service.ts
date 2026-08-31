@@ -231,8 +231,8 @@ export class IssuesService {
       data: issue,
     };
   }
-  //UPDATE ISSUE STATUS
-  async updateStatusByUuid(
+  //CLOSE ISSUE
+  async closeIssue(
     uuid: string,
     updateDto: UpdateIssueStatusDto,
     userUuid: string,
@@ -250,13 +250,13 @@ export class IssuesService {
       throw new NotFoundException('User not found');
     }
 
-    issue.updatedBy = user;
+    issue.closedBy = user;
     issue.status = updateDto.status;
     await this.issueRepository.save(issue);
 
     return {
       statusCode: 200,
-      message: 'Issue updated successfully',
+      message: 'Issue closed successfully',
     };
   }
 
