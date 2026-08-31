@@ -1,3 +1,14 @@
+import { IssuesService } from '../services/issue/issues.service';
+import { CreateIssueDto } from '../dto/create-issue.dto';
+import { UpdateIssueStatusDto } from '../dto/update-issue.dto';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
+import { CreateCommentDto } from '../dto/create-comment.dto';
+import { CreateAssignmentDto } from '../dto/create.assignment.dto';
+import { User } from 'src/modules/users/entities/user.entity';
+import { SearchParams } from 'src/common/utils/searchparams.utils';
+import { PaginationOptionsDto } from 'src/common/pagination/dto/pagination-options.dto';
+import { QueryParamsDto } from 'src/common/queries/query-params.dto';
+import {ApiBearerAuth,ApiOperation,ApiQuery,ApiResponse, ApiTags,} from '@nestjs/swagger';
 import {
   Controller,
   Get,
@@ -10,23 +21,9 @@ import {
   Req,
   Query,
 } from '@nestjs/common';
-import { IssuesService } from '../services/issue/issues.service';
-import { CreateIssueDto } from '../dto/create-issue.dto';
-import { UpdateIssueStatusDto } from '../dto/update-issue.dto';
-import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiQuery,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
-import { CreateCommentDto } from '../dto/create-comment.dto';
-import { CreateAssignmentDto } from '../dto/create.assignment.dto';
-import { User } from 'src/modules/users/entities/user.entity';
-import { SearchParams } from 'src/common/utils/searchparams.utils';
-import { PaginationOptionsDto } from 'src/common/pagination/dto/pagination-options.dto';
-import { QueryParamsDto } from 'src/common/queries/query-params.dto';
+
+
+
 
 @Controller('api/issues')
 @ApiTags('Issues')
@@ -44,39 +41,16 @@ export class IssuesController {
   @Post('comments')
   @ApiOperation({ summary: 'Create a comment' })
   @ApiResponse({ status: 201, description: 'Comment created successfully.' })
-  createComment(@Body() createCommentDto: CreateCommentDto) {
-    return this.issuesService.createComment(createCommentDto);
-  }
-  // POST /api/issues/assign
-  @Post('assign')
-  @ApiOperation({ summary: 'Assign an issue' })
-  @ApiResponse({ status: 201, description: 'Issue assigned successfully.' })
-  assignIssue(@Body() createAssignmentDto: CreateAssignmentDto) {
-    return this.issuesService.assignIssue(createAssignmentDto);
-  }
-
-  // GET /api/issues/assign
-  @Get('assign')
-  @ApiOperation({ summary: 'Get assigned issues' })
-  @ApiResponse({
-    status: 201,
-    description: 'Assigned issues retrieved successfully.',
-  })
-  getAssignments() {
-    return this.issuesService.getAssignments();
-  }
-
-  // GET /api/issues/assign/:uuid
-  @Get('assign/:uuid')
-  @ApiOperation({ summary: 'Get a specific assignment' })
-  @ApiResponse({
-    status: 201,
-    description: 'Assignment retrieved successfully.',
-  })
-  getAssignment(@Param('uuid', ParseUUIDPipe) uuid: string) {
-    return this.issuesService.getAssignment(uuid);
-  }
-
+ async createComment(
+  @Req() req,
+  @Body() createCommentDto: CreateCommentDto,
+) {
+  return this.issuesService.createComment(
+    createCommentDto,
+    req.user.uuid,
+  );
+}
+  
   //GET ALL ISSUES WITH PAGINATION AND FILTERING
   @ApiQuery({
     name: 'page',
@@ -91,7 +65,7 @@ export class IssuesController {
     example: 10,
   })
   @Get()
-  @ApiOperation({ summary: 'Get all issues' })
+  @ApiOperation({ summary: 'Retrieve all issues' })
   @ApiResponse({ status: 201, description: 'Issues retrieved successfully.' })
   async findAll(
     @Query() queryParamsDto: QueryParamsDto,
@@ -109,8 +83,10 @@ export class IssuesController {
   updateStatus(
     @Param('uuid', ParseUUIDPipe) uuid: string,
     @Body() updateDto: UpdateIssueStatusDto,
+  @Req() req,
+
   ) {
-    return this.issuesService.updateStatusByUuid(uuid, updateDto);
+    return this.issuesService.updateStatusByUuid(uuid, updateDto,req.user.uuid );
   }
 
   //GET MY ISSUES
@@ -126,7 +102,7 @@ export class IssuesController {
     type: Number,
     example: 10,
   })
-  @Get('my-assigned-issues')
+  @Get('my-issues')
   async findMyIssues(
     @Req() req,
     @Query() queryParamsDto: QueryParamsDto,
@@ -140,7 +116,7 @@ export class IssuesController {
   }
 
   @Get(':uuid')
-  @ApiOperation({ summary: 'Get an issue by UUID' })
+  @ApiOperation({ summary: 'Retrieve an issue by UUID' })
   @ApiResponse({ status: 201, description: 'Issue retrieved successfully.' })
   findByUuid(@Param('uuid', ParseUUIDPipe) uuid: string) {
     return this.issuesService.findByUuid(uuid);
