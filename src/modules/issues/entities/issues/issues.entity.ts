@@ -1,4 +1,4 @@
-import { IssuePriority, IssueStatus } from 'src/common/enums/issue.enum';
+import { AssignedTo, Designation, IssuePriority, IssueStatus } from 'src/common/enums/issue.enum';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -26,16 +26,16 @@ export class Issue {
   uuid: string;
 
   @Expose()
-    get number(): string {
-      return `ISSUE-${String(this.id).padStart(4, '0')}`;
-    }
+  get number(): string {
+    return `ISSUE-${String(this.id).padStart(4, '0')}`;
+  }
 
- @ManyToOne(() => Company, { nullable: false })
-@JoinColumn({
-  name: 'company_id',
-  referencedColumnName: 'id',
-})
-company: Company;
+  @ManyToOne(() => Company, { nullable: false })
+  @JoinColumn({
+    name: 'company_id',
+    referencedColumnName: 'id',
+  })
+  company: Company;
 
   @Column({ name: 'reporter_name' })
   reporterName: string;
@@ -46,17 +46,23 @@ company: Company;
   @Column({ type: 'enum', enum: IssuePriority, default: IssuePriority.MEDIUM })
   priority: IssuePriority;
 
-  
-
   @Column({ type: 'varchar', nullable: true, default: null })
   attachment: string | null;
 
   @Column({
     type: 'enum',
     enum: IssueStatus,
-    default: IssueStatus.AT_SUPPORTER,
+    default: IssueStatus.IN_PROGRESS,
   })
   status: IssueStatus;
+
+
+  @Column({
+    type: 'enum',
+    enum: AssignedTo,
+    default: AssignedTo.SUPPORTER,
+  })
+  assignedTo: AssignedTo;
 
   @Column()
   title: string;
@@ -67,8 +73,7 @@ company: Company;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' } )
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 
   // ID of the user who created the issue

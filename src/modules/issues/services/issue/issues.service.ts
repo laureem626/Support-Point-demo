@@ -1,8 +1,3 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { Issue } from '../../entities/issues/issues.entity';
@@ -23,6 +18,12 @@ import { QueryParamsDto } from 'src/common/queries/query-params.dto';
 import { PaginationOptionsDto } from 'src/common/pagination/dto/pagination-options.dto';
 import { PaginationService } from 'src/common/pagination/pagination-service';
 import { validateAndSort } from 'src/common/utils/sort-queryset';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { AssignedTo } from 'src/common/enums/issue.enum';
 
 @Injectable()
 export class IssuesService {
@@ -83,8 +84,8 @@ export class IssuesService {
   }
 
   //POST A COMMENT WITHIN AN ISSUE
-  async createComment(createCommentDto: CreateCommentDto) {
-    const { userId, issueId, comments } = createCommentDto;
+  async createComment(createCommentDto: CreateCommentDto, userUuid: string) {
+    const { issueId, comments } = createCommentDto;
 
     const issue = await this.issueRepository.findOne({
       where: { id: issueId },
@@ -95,7 +96,7 @@ export class IssuesService {
     }
 
     const user = await this.userRepository.findOne({
-      where: { id: userId },
+      where: { uuid: userUuid },
     });
 
     if (!user) {
@@ -104,17 +105,21 @@ export class IssuesService {
 
     const comment = this.commentRepository.create({
       issueId: issue.id,
-      userId: user.id,
+      createdBy: user,
       comments,
     });
     const saved = await this.commentRepository.save(comment);
+
+    issue.assignedTo = createCommentDto.assignedTo;
+    await this.issueRepository.save(issue);
+
     const result = await this.commentRepository.findOne({
       where: {
         id: saved.id,
       },
       relations: {
-        user: true,
         issue: true,
+        createdBy: true,
       },
     });
 
@@ -125,146 +130,127 @@ export class IssuesService {
     };
   }
 
-  //POST /api/issues/assign
-  async assignIssue(createAssignmentDto: CreateAssignmentDto) {
-    const { issueUuid, userId, description } = createAssignmentDto;
+  //GET ALL ISSUES
+  async findAll(
+    queryParamsDto: QueryParamsDto,
+    paginationOptsDto: PaginationOptionsDto,
+  ) {
+    const {
+      search,
+      orderBy = 'createdAt',
+      sortOrder = 'DESC',
+      status,
+      priority,
+    } = queryParamsDto;
 
-    // Find issue using UUID
+    const queryBuilder = this.issueRepository
+      .createQueryBuilder('issue')
+      .leftJoinAndSelect('issue.company', 'company')
+      .leftJoinAndSelect('company.product', 'product')
+      .leftJoinAndSelect('issue.createdBy', 'createdBy')
+      .leftJoinAndSelect('issue.updatedBy', 'updatedBy');
+
+    // SEARCH
+    if (search) {
+      queryBuilder.andWhere(
+        `(
+        issue.title ILIKE :search OR
+        issue.description ILIKE :search OR
+        issue.reporterName ILIKE :search OR
+        issue.reporterMobile ILIKE :search
+      )`,
+        {
+          search: `%${search}%`,
+        },
+      );
+    }
+
+    // FILTER
+    if (status) {
+      queryBuilder.andWhere('issue.status = :status', {
+        status,
+      });
+    }
+
+    if (priority) {
+      queryBuilder.andWhere('issue.priority = :priority', {
+        priority,
+      });
+    }
+
+    // SORT
+    queryBuilder.orderBy(
+      `issue.${orderBy}`,
+      sortOrder === 'ASC' ? 'ASC' : 'DESC',
+    );
+
+    // PAGINATION
+    const page = paginationOptsDto.page || 1;
+    const limit = paginationOptsDto.pageSize || 10;
+
+    const skip = (page - 1) * limit;
+
+    queryBuilder.skip(skip).take(limit);
+
+    const [issues, total] = await queryBuilder.getManyAndCount();
+
+    return {
+      data: issues,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+  //GET ISSUE AND IT DETAILS
+  async findByUuid(uuid: string) {
     const issue = await this.issueRepository.findOne({
-      where: { uuid: issueUuid },
+      where: { uuid },
+
+      relations: {
+        company: {
+          product: true,
+        },
+        createdBy: true,
+        updatedBy: true,
+        comments: {
+          createdBy: true,
+        
+        },
+      },
     });
 
     if (!issue) {
-      throw new NotFoundException('Issue not found');
+      throw new NotFoundException(`Issue with UUID ${uuid} not found`);
     }
 
-    // Find user using userId
+    return {
+      statusCode: 200,
+      data: issue,
+    };
+  }
+  //UPDATE ISSUE STATUS
+  async updateStatusByUuid(
+    uuid: string,
+    updateDto: UpdateIssueStatusDto,
+    userUuid: string,
+  ) {
+    const issue = await this.issueRepository.findOne({ where: { uuid } });
+    if (!issue) {
+      throw new NotFoundException(`Issue with UUID ${uuid} not found`);
+    }
+
     const user = await this.userRepository.findOne({
-      where: { id: userId },
+      where: { uuid: userUuid },
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    // Create assignment
-    const assignment = this.assignmentRepository.create({
-      issueId: issue.id,
-      userId: user.id,
-      description,
-    });
-
-    // Save assignment
-    return this.assignmentRepository.save(assignment);
-  }
-
-  //GET ALL ISSUES
-  async findAll(
-  queryParamsDto: QueryParamsDto,
-  paginationOptsDto: PaginationOptionsDto,
-) {
-  const {
-    search,
-    orderBy = 'createdAt',
-    sortOrder = 'DESC',
-     status,
-  priority,
-    
-  } = queryParamsDto;
-
-  const queryBuilder = this.issueRepository
-    .createQueryBuilder('issue')
-    .leftJoinAndSelect('issue.company', 'company')
-    .leftJoinAndSelect('company.product', 'product')
-    .leftJoinAndSelect('issue.createdBy', 'createdBy')
-    .leftJoinAndSelect('issue.updatedBy', 'updatedBy');
-
-  // SEARCH
-  if (search) {
-    queryBuilder.andWhere(
-      `(
-        issue.title ILIKE :search OR
-        issue.description ILIKE :search OR
-        issue.reporterName ILIKE :search OR
-        issue.reporterMobile ILIKE :search
-      )`,
-      {
-        search: `%${search}%`,
-      },
-    );
-  }
-
-  // FILTER
- if (status) {
-  queryBuilder.andWhere('issue.status = :status', {
-    status,
-  });
-}
-
-if (priority) {
-  queryBuilder.andWhere('issue.priority = :priority', {
-    priority,
-  });
-}
-
-  // SORT
-  queryBuilder.orderBy(
-    `issue.${orderBy}`,
-    sortOrder === 'ASC' ? 'ASC' : 'DESC',
-  );
-
-  // PAGINATION
-  const page = paginationOptsDto.page || 1;
-  const limit = paginationOptsDto.pageSize || 10;
-
-  const skip = (page - 1) * limit;
-
-  queryBuilder.skip(skip).take(limit);
-
-  const [issues, total] = await queryBuilder.getManyAndCount();
-
-  return {
-    data: issues,
-    meta: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    },
-  };
-}
-  //GET ISSUE AND IT DETAILS
-  async findByUuid(uuid: string) {
-  const issue = await this.issueRepository.findOne({
-    where: { uuid },
-
-    relations: {
-      company: {
-        product: true,
-      },
-      createdBy: true,
-      updatedBy: true,
-      comments: true,
-      assignments: true,
-    },
-  });
-
-  if (!issue) {
-    throw new NotFoundException(`Issue with UUID ${uuid} not found`);
-  }
-
-  return {
-    statusCode: 200,
-    data: issue,
-  };
-}
-  //UPDATE ISSUE STATUS
-  async updateStatusByUuid(uuid: string, updateDto: UpdateIssueStatusDto) {
-    const issue = await this.issueRepository.findOne({ where: { uuid } });
-    if (!issue) {
-      throw new NotFoundException(`Issue with UUID ${uuid} not found`);
-    }
-
+    issue.updatedBy = user;
     issue.status = updateDto.status;
     await this.issueRepository.save(issue);
 
@@ -272,33 +258,6 @@ if (priority) {
       statusCode: 200,
       message: 'Issue updated successfully',
     };
-  }
-
-  //GET /api/issues/assign
-  async getAssignments() {
-    return this.assignmentRepository.find({
-      relations: {
-        issue: true,
-        user: true,
-      },
-    });
-  }
-
-  //GET /api/issues/assign/:uuid
-  async getAssignment(uuid: string) {
-    const assignment = await this.assignmentRepository.findOne({
-      where: { uuid },
-      relations: {
-        issue: true,
-        user: true,
-      },
-    });
-
-    if (!assignment) {
-      throw new NotFoundException('Assignment not found');
-    }
-
-    return assignment;
   }
 
   //Find my issue
@@ -325,18 +284,15 @@ if (priority) {
 
     // Build query
     const queryBuilder = this.issueRepository
-    .createQueryBuilder('issue')
-    .leftJoinAndSelect('issue.createdBy', 'createdBy')
-    .leftJoinAndSelect('issue.updatedBy', 'updatedBy')
-    .leftJoinAndSelect('issue.company', 'company')
-    .leftJoinAndSelect('company.product', 'product')
-    .innerJoin(
-      'issue.assignments',
-      'assignment',
-    )
-    .where('assignment.userId = :userId', {
-      userId: user.id,
-    });
+      .createQueryBuilder('issue')
+      .leftJoinAndSelect('issue.createdBy', 'createdBy')
+      .leftJoinAndSelect('issue.updatedBy', 'updatedBy')
+      .leftJoinAndSelect('issue.company', 'company')
+      .leftJoinAndSelect('company.product', 'product')
+      .leftJoinAndSelect('issue.comments', 'comment')
+      .where('issue.assignedTo = :assignedTo', {
+        assignedTo: user.designation,
+      });
 
     // Search
     if (search) {

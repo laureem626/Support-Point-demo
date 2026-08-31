@@ -1,13 +1,14 @@
+import { IssuePriority, IssueStatus } from '../../../common/enums/issue.enum';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEnum,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsDateString,
+ 
 } from 'class-validator';
-import { IssuePriority, IssueStatus } from '../../../common/enums/issue.enum';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
 export class CreateIssueDto {
   @ApiProperty({ example: 1 })
   @IsInt()

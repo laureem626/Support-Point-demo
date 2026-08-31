@@ -1,7 +1,14 @@
 import { Issue } from 'src/modules/issues/entities/issues/issues.entity';
 import { User } from 'src/modules/users/entities/user.entity';
-import { Entity, PrimaryGeneratedColumn, Column, Generated, ManyToOne, JoinColumn } from 'typeorm';
-
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  Generated,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+} from 'typeorm';
 
 @Entity('issue_assignments')
 export class IssueAssignment {
@@ -27,6 +34,11 @@ export class IssueAssignment {
   })
   @JoinColumn({ name: 'user_id' })
   user: User;
+
+  //@OneToMany(() => Comment, (comment) => comment.assignment, {
+  //cascade: true,
+//})
+//comments: Comment[];
 
   @Column({ type: 'text' })
   description: string;

@@ -16,7 +16,6 @@ export enum SortOrder {
 export class QueryParamsDto {
   @ApiPropertyOptional({
     description: 'General search text',
-    example: 'Support',
   })
   @IsOptional()
   @IsString()
