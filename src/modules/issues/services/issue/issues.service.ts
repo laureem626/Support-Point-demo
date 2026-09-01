@@ -3,6 +3,7 @@ import { Brackets, Repository } from 'typeorm';
 import { Issue } from '../../entities/issues/issues.entity';
 import { CreateIssueDto } from '../../dto/create-issue.dto';
 import { UpdateIssueStatusDto } from '../../dto/update-issue.dto';
+import { CloseIssueDto } from '../../dto/close-issue.dto';
 import { CreateCommentDto } from '../../dto/create-comment.dto';
 import { IssueAssignment } from '../../entities/issues/issues-assignment.entity';
 import { CreateAssignmentDto } from '../../dto/create.assignment.dto';
@@ -418,8 +419,8 @@ if (!assignedUser) {
       currentAssignee: lastAssignment?.assignedUser ?? null,
     };
   }
-  //CLOSE ISSUE
-  async closeIssue(
+  //UPDATE ISSUE
+  async updateIssue(
     uuid: string,
     updateDto: UpdateIssueStatusDto,
     userUuid: string,
@@ -446,6 +447,40 @@ if (!assignedUser) {
       message: 'Issue closed successfully',
     };
   }
+
+  // CLOSE ISSUE
+  async closeIssue(
+    uuid: string,
+    closeIssueDto: CloseIssueDto,
+    userUuid: string,
+  ) {
+    const issue = await this.issueRepository.findOne({
+      where: { uuid },
+    });
+
+    if (!issue) {
+      throw new NotFoundException(`Issue with UUID ${uuid} not found`);
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { uuid: userUuid },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    issue.closedBy = user;
+    issue.status = IssueStatus.CLOSED;
+
+    await this.issueRepository.save(issue);
+
+    return {
+      statusCode: 200,
+      message: 'Issue closed successfully',
+    };
+  }
+
 
   //Find my issue
   async findMyIssues(

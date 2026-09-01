@@ -3,6 +3,7 @@ import { CreateIssueDto } from '../dto/create-issue.dto';
 import { UpdateIssueStatusDto } from '../dto/update-issue.dto';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { CreateCommentDto } from '../dto/create-comment.dto';
+import { CloseIssueDto } from '../dto/close-issue.dto';
 import { CreateAssignmentDto } from '../dto/create.assignment.dto';
 import { User } from 'src/modules/users/entities/user.entity';
 import { SearchParams } from 'src/common/utils/searchparams.utils';
@@ -75,19 +76,32 @@ export class IssuesController {
   }
 
   @Patch(':uuid')
-  @ApiOperation({ summary: 'Close issue' })
+  @ApiOperation({ summary: 'update issue status' })
   @ApiResponse({
     status: 201,
     description: 'Issue status updated successfully.',
   })
-  closeIssue(
+  UpdateIssueStatus(
     @Param('uuid', ParseUUIDPipe) uuid: string,
     @Body() updateDto: UpdateIssueStatusDto,
     @Req() req,
   ) {
-    return this.issuesService.closeIssue(uuid, updateDto,req.user.uuid );
+    return this.issuesService.updateIssue(uuid, updateDto, req.user.uuid);
   }
 
+   @Post(':uuid/close')
+  @ApiOperation({ summary: 'Close issue' })
+  @ApiResponse({
+    status: 200,
+    description: 'Issue closed successfully.',
+  })
+  closeIssue(
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+    @Body() closeIssueDto: CloseIssueDto,
+    @Req() req,
+  ) {
+    return this.issuesService.closeIssue(uuid, closeIssueDto, req.user.uuid);
+  }
   //GET MY ISSUES
   @ApiQuery({
     name: 'page',
