@@ -12,8 +12,11 @@ import {
   JoinColumn,
   UpdateDateColumn,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 @Entity('products')
+@Index(['createdAt', 'updatedAt'])
+@Index(['name', 'description'])
 export class Product {
   @PrimaryGeneratedColumn()
   id: number;

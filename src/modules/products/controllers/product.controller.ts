@@ -1,6 +1,6 @@
 import { ProductsService } from '../services/product.service';
 import { CreateProductDto } from '../dtos/create-product.dto';
-import { QueryParamsDto } from '../../../common/queries/query-params.dto';
+import { ProductQueryDto } from '../dtos/product-query.dto';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import {ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags,} from '@nestjs/swagger';
 import {
@@ -56,7 +56,7 @@ export class ProductsController {
     status: 200,
     description: 'Products retrieved successfully.',
   })
-  async findAll(@Query() query: QueryParamsDto) {
+  async findAll(@Query() query: ProductQueryDto) {
     const result = await this.productsService.findAll(query);
 
     return {

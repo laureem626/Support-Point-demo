@@ -4,8 +4,8 @@ import { Repository } from 'typeorm';
 import { Product } from '../entities/product.entity';
 import { CreateProductDto } from '../dtos/create-product.dto';
 import { User } from '../../users/entities/user.entity';
-import { QueryParamsDto } from '../../../common/queries/query-params.dto';
 import { PaginationService } from '../../../common/pagination/pagination-service';
+import { ProductQueryDto } from '../dtos/product-query.dto';
 @Injectable()
 export class ProductsService {
   constructor(
@@ -62,7 +62,7 @@ export class ProductsService {
     return product;
   }
 
-  async findAll(query: QueryParamsDto) {
+  async findAll(query: ProductQueryDto) {
     const queryBuilder = this.productRepository
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.createdBy', 'createdBy')

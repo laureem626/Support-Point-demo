@@ -3,7 +3,7 @@ import { CreateUserDto } from '../../dtos/create-user.dto';
 import { User } from '../../entities/user.entity';
 import { Public } from '../../../../common/decorators/is-public-route.decorator';
 import { PaginationOptionsDto } from '../../../../common/pagination/dto/pagination-options.dto';
-import { QueryParamsDto } from '../../../../common/queries/query-params.dto';
+import { UserQueryDto } from '../../dtos/user-query.dto';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { 
@@ -38,7 +38,7 @@ export class UsersController {
   @Get()
   async findAll(
     @Query() paginationOptsDto: PaginationOptionsDto,
-    @Query() queryParamsDto: QueryParamsDto,
+    @Query() queryParamsDto: UserQueryDto,
   ) {
     return await this.usersService.findAll(queryParamsDto, paginationOptsDto);
   }

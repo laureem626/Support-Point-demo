@@ -5,8 +5,8 @@ import { Company } from './entities/company.entity';
 import { CreateCompanyDto } from './dtos/create-company.dto';
 import { User } from '../users/entities/user.entity';
 import { Product } from '../products/entities/product.entity';
-import { QueryParamsDto } from '../../common/queries/query-params.dto';
 import { PaginationService } from '../../common/pagination/pagination-service';
+import { CompanyQueryDto } from './dtos/company-query.dto';
 @Injectable()
 export class CompaniesService {
   constructor(
@@ -83,7 +83,7 @@ export class CompaniesService {
     return company;
   }
 
-  async findAll(query: QueryParamsDto) {
+  async findAll(query: CompanyQueryDto) {
     const queryBuilder =
       this.companyRepository
         .createQueryBuilder('company')

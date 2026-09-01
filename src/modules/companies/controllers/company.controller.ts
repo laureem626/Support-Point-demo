@@ -1,7 +1,7 @@
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CreateCompanyDto } from '../dtos/create-company.dto';
 import { CompaniesService } from '../company.service';
-import { QueryParamsDto } from '../../../common/queries/query-params.dto';
+import { CompanyQueryDto } from '../dtos/company-query.dto';
 import {ApiTags, ApiOperation, ApiResponse, ApiBearerAuth,} from '@nestjs/swagger';
 import {
   Controller,
@@ -50,7 +50,7 @@ export class CompaniesController {
     status: 200,
     description: 'Companies retrieved successfully',
   })
-  async findAll(@Query() query: QueryParamsDto) {
+  async findAll(@Query() query: CompanyQueryDto) {
     const result = await this.companiesService.findAll(query);
 
     return {

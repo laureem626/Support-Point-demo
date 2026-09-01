@@ -4,7 +4,7 @@ import { User } from '../../entities/user.entity';
 import { Repository } from 'typeorm';
 import { CreateUserDto } from '../../dtos/create-user.dto';
 import { hashPassword } from '../../../../common/utils/password-hash';
-import { QueryParamsDto } from '../../../../common/queries/query-params.dto';
+import { UserQueryDto } from '../../dtos/user-query.dto';
 import { PaginationOptionsDto } from '../../../../common/pagination/dto/pagination-options.dto';
 import { validateAndSort } from '../../../../common/utils/sort-queryset';
 import { PaginationService } from '../../../../common/pagination/pagination-service';
@@ -38,10 +38,10 @@ export class UsersService {
   }
 
   async findAll(
-    queryParamsDto: QueryParamsDto,
+    query: UserQueryDto,
     paginationOptsDto: PaginationOptionsDto,
   ) {
-    const { search, orderBy, sortOrder, isActive } = queryParamsDto;
+    const { search, orderBy, sortOrder, isActive, designation } = query;
 
     const queryBuilder = this.usersRepository
       .createQueryBuilder('user')
@@ -60,7 +60,14 @@ export class UsersService {
     // Filter based on active/not active
     if (isActive !== undefined) {
       queryBuilder.where('user.isActive = :isActive', {
-        isActive: queryParamsDto.isActive,
+        isActive
+      });
+    }
+
+    // Filter by designation
+    if (designation) {
+      queryBuilder.andWhere('user.designation = :designation', {
+        designation
       });
     }
 
