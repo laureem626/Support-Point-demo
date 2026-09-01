@@ -15,11 +15,11 @@ import { IssuesModule } from './modules/issues/issues.module';
 
 @Module({
   imports: [
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'uploads'),
-      exclude: ['api/(.*)'],
-      serveRoot: '/uploads',
-    }),
+    // ServeStaticModule.forRoot({
+    //   rootPath: join(__dirname, '..', 'uploads'),
+    //   exclude: ['/api/*path'],
+    //   serveRoot: '/uploads',
+    // }),
 
     ScheduleModule.forRoot(),
 

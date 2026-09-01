@@ -6,7 +6,5 @@ export class VerifyLoginDto {
   @IsNotEmpty()
   mobile: string;
 
-  @IsString()
-  @IsNotEmpty()
-  otp: string;
+  
 }

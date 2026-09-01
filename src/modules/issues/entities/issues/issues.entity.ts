@@ -57,12 +57,12 @@ export class Issue {
   status: IssueStatus;
 
 
-  @Column({
-    type: 'enum',
-    enum: AssignedTo,
-    default: AssignedTo.SUPPORTER,
-  })
-  assignedTo: AssignedTo;
+  // @Column({
+  //   type: 'enum',
+  //   enum: AssignedTo,
+  //   default: AssignedTo.SUPPORTER,
+  // })
+  // assignedTo: AssignedTo;
 
   @Column()
   title: string;

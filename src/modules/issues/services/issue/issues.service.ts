@@ -14,7 +14,7 @@ import { isUUID } from 'class-validator';
 import { SearchParams } from 'src/common/utils/searchparams.utils';
 
 import { instanceToPlain } from 'class-transformer';
-import { QueryParamsDto } from 'src/common/queries/query-params.dto';
+
 import { PaginationOptionsDto } from 'src/common/pagination/dto/pagination-options.dto';
 import { PaginationService } from 'src/common/pagination/pagination-service';
 import { validateAndSort } from 'src/common/utils/sort-queryset';
@@ -23,7 +23,9 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { AssignedTo } from 'src/common/enums/issue.enum';
+import { AssignedTo, Designation, IssueStatus } from 'src/common/enums/issue.enum';
+import { QueryParamsDto } from 'src/common/queries/query-params.dto';
+
 
 @Injectable()
 export class IssuesService {
@@ -85,7 +87,7 @@ export class IssuesService {
 
   //POST A COMMENT WITHIN AN ISSUE
   async createComment(createCommentDto: CreateCommentDto, userUuid: string) {
-    const { issueId, comments } = createCommentDto;
+    const { issueId, assignedId, comments } = createCommentDto;
 
     const issue = await this.issueRepository.findOne({
       where: { id: issueId },
@@ -95,23 +97,46 @@ export class IssuesService {
       throw new NotFoundException('Issue not found');
     }
 
-    const user = await this.userRepository.findOne({
-      where: { uuid: userUuid },
-    });
+    const currentUser = await this.userRepository.findOne({
+    where: { uuid: userUuid },
+  });
 
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+  if (!currentUser) {
+    throw new NotFoundException('Current user not found');
+  }
+
+    const assignedUser = await this.userRepository.findOne({
+  where: { id: assignedId },
+});
+if (!assignedUser) {
+  throw new NotFoundException('Assigned user not found');
+}
+ 
+ const lastAssignment = await this.commentRepository
+    .createQueryBuilder('comment')
+    .where('comment.issueId = :issueId', {
+      issueId,
+    })
+    .andWhere('comment.assignedTo IS NOT NULL')
+    .orderBy('comment.createdAt', 'DESC')
+    .getOne();
+
+ await this.validateAssignment(
+    currentUser,
+    assignedUser,
+    lastAssignment,
+  );
 
     const comment = this.commentRepository.create({
       issueId: issue.id,
-      createdBy: user,
+      createdBy: currentUser,
+      assignedTo:assignedUser.id,
       comments,
     });
     const saved = await this.commentRepository.save(comment);
 
-    issue.assignedTo = createCommentDto.assignedTo;
-    await this.issueRepository.save(issue);
+    //issue.assignedTo = createCommentDto.assignedTo;
+    //await this.issueRepository.save(issue);
 
     const result = await this.commentRepository.findOne({
       where: {
@@ -120,6 +145,7 @@ export class IssuesService {
       relations: {
         issue: true,
         createdBy: true,
+        assignedUser: true, 
       },
     });
 
@@ -130,6 +156,154 @@ export class IssuesService {
     };
   }
 
+  private async validateAssignment(
+  currentUser: User,
+  assignedUser: User,
+  lastAssignment: Comment | null,
+) {
+  const currentDesignation = currentUser.designation;
+  const assignedDesignation = assignedUser.designation;
+
+  if (
+  currentDesignation === Designation.SUPPORTER &&
+  assignedDesignation === Designation.BA
+) {
+  return;
+}
+
+  // No previous assignment
+  if (!lastAssignment) {
+    if (
+      currentDesignation === Designation.SUPPORTER &&
+      assignedDesignation === Designation.BA
+    ) {
+      return;
+    }
+
+    throw new BadRequestException(
+      `${currentDesignation} cannot assign this issue to ${assignedDesignation}.`,
+    );
+  }
+
+  // Who currently owns the issue?
+  const currentAssigneeId = lastAssignment.assignedTo;
+
+  // The person making the assignment MUST currently own the issue
+  if (currentAssigneeId !== currentUser.id) {
+    throw new BadRequestException(
+      'You cannot assign this issue because it is not currently assigned to you.',
+    );
+  }
+
+  // -----------------------------------------
+  // SUPPORTER → BA
+  // -----------------------------------------
+  if (
+    currentDesignation === Designation.SUPPORTER &&
+    assignedDesignation === Designation.BA
+  ) {
+    return;
+  }
+
+  // -----------------------------------------
+  // BA → DEVELOPER
+  // -----------------------------------------
+  if (
+    currentDesignation === Designation.BA &&
+    assignedDesignation === Designation.DEVS
+  ) {
+    return;
+  }
+
+  // -----------------------------------------
+  // BA → SUPPORTER
+  // Only if Supporter previously assigned
+  // this issue to this BA
+  // -----------------------------------------
+  if (
+    currentDesignation === Designation.BA &&
+    assignedDesignation === Designation.SUPPORTER
+  ) {
+    const previousSupporterAssignment =
+      await this.commentRepository
+        .createQueryBuilder('comment')
+        .innerJoin(
+          'comment.createdBy',
+          'creator',
+        )
+        .where('comment.issueId = :issueId', {
+          issueId: lastAssignment.issueId,
+        })
+        .andWhere(
+          'comment.assignedTo = :baId',
+          {
+            baId: currentUser.id,
+          },
+        )
+        .andWhere(
+          'creator.designation = :designation',
+          {
+            designation: Designation.SUPPORTER,
+          },
+        )
+        .getOne();
+
+    if (!previousSupporterAssignment) {
+      throw new BadRequestException(
+        'BA can only assign to a Supporter if a Supporter previously assigned this issue to the BA.',
+      );
+    }
+
+    return;
+  }
+
+  // -----------------------------------------
+  // DEVELOPER → QA ONLY
+  // -----------------------------------------
+  if (
+    currentDesignation === Designation.DEVS &&
+    assignedDesignation === Designation.QA
+  ) {
+    return;
+  }
+
+  // Developer cannot assign anywhere else
+  if (
+    currentDesignation === Designation.DEVS
+  ) {
+    throw new BadRequestException(
+      'Developer can only assign an issue to QA.',
+    );
+  }
+
+  // -----------------------------------------
+  // QA → DEVELOPER
+  // -----------------------------------------
+  if (
+    currentDesignation === Designation.QA&&
+    assignedDesignation === Designation.DEVS
+  ) {
+    return;
+  }
+
+  // -----------------------------------------
+  // QA → SUPPORTER
+  // -----------------------------------------
+  if (
+    currentDesignation === Designation.QA&&
+    assignedDesignation === Designation.SUPPORTER
+  ) {
+    return;
+  }
+
+  // -----------------------------------------
+  // Everything else is forbidden
+  // -----------------------------------------
+  throw new BadRequestException(
+    `${currentDesignation} cannot assign an issue to ${assignedDesignation}.`,
+  );
+}
+
   //GET ALL ISSUES
   async findAll(
     queryParamsDto: QueryParamsDto,
@@ -139,7 +313,6 @@ export class IssuesService {
       search,
       orderBy = 'createdAt',
       sortOrder = 'DESC',
-      status,
       priority,
     } = queryParamsDto;
 
@@ -217,7 +390,7 @@ export class IssuesService {
         updatedBy: true,
         comments: {
           createdBy: true,
-        
+          assignedUser: true,
         },
       },
     });
@@ -226,9 +399,23 @@ export class IssuesService {
       throw new NotFoundException(`Issue with UUID ${uuid} not found`);
     }
 
+    const lastAssignment = await this.commentRepository
+    .createQueryBuilder('comment')
+    .leftJoinAndSelect(
+      'comment.assignedUser',
+      'assignedUser',
+    )
+    .where('comment.issueId = :issueId', {
+      issueId: issue.id,
+    })
+    .andWhere('comment.assignedTo IS NOT NULL')
+    .orderBy('comment.createdAt', 'DESC')
+    .getOne();
+
     return {
       statusCode: 200,
       data: issue,
+      currentAssignee: lastAssignment?.assignedUser ?? null,
     };
   }
   //CLOSE ISSUE
@@ -262,83 +449,111 @@ export class IssuesService {
 
   //Find my issue
   async findMyIssues(
-    userUuid: string,
-    queryParamsDto: QueryParamsDto,
-    paginationOptsDto: PaginationOptionsDto,
-  ) {
-    const { search, orderBy, sortOrder } = queryParamsDto;
+  userUuid: string,
+  queryParamsDto: QueryParamsDto,
+  paginationOptsDto: PaginationOptionsDto,
+) {
+  const { search, orderBy, sortOrder } = queryParamsDto;
 
-    // Validate UUID
-    if (!isUUID(userUuid)) {
-      throw new BadRequestException('Invalid user UUID');
-    }
+  // 1. Validate UUID
+  if (!isUUID(userUuid)) {
+    throw new BadRequestException('Invalid user UUID');
+  }
 
-    // Check if user exists
-    const user = await this.userRepository.findOne({
-      where: { uuid: userUuid },
-    });
+  // 2. Find logged-in user
+  const user = await this.userRepository.findOne({
+    where: { uuid: userUuid },
+  });
 
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+  if (!user) {
+    throw new NotFoundException('User not found');
+  }
 
-    // Build query
-    const queryBuilder = this.issueRepository
-      .createQueryBuilder('issue')
-      .leftJoinAndSelect('issue.createdBy', 'createdBy')
-      .leftJoinAndSelect('issue.updatedBy', 'updatedBy')
-      .leftJoinAndSelect('issue.company', 'company')
-      .leftJoinAndSelect('company.product', 'product')
-      .leftJoinAndSelect('issue.comments', 'comment')
-      .where('issue.assignedTo = :assignedTo', {
-        assignedTo: user.designation,
-      });
+  // 3. Build issue query
+  const queryBuilder = this.issueRepository
+    .createQueryBuilder('issue')
+    .leftJoinAndSelect('issue.createdBy', 'createdBy')
+    .leftJoinAndSelect('issue.updatedBy', 'updatedBy')
+    .leftJoinAndSelect('issue.company', 'company')
+    .leftJoinAndSelect('company.product', 'product')
+    .leftJoinAndSelect('issue.comments', 'comment')
+    .leftJoinAndSelect('comment.assignedUser', 'assignedUser');
 
-    // Search
-    if (search) {
-      queryBuilder.andWhere(
-        new Brackets((qb) => {
-          qb.where('issue.title ILIKE :search', {
+  // 4. Get only the latest assignment for each issue
+  queryBuilder.andWhere(
+    `comment.id = (
+      SELECT c.id
+      FROM comments c
+      WHERE c.issue_id = issue.id
+      AND c.assigned_to IS NOT NULL
+      ORDER BY c.created_at DESC
+      LIMIT 1
+    )`,
+  );
+
+  // 5. Make sure the latest assignment belongs to the logged-in user
+  queryBuilder.andWhere(
+    'comment.assigned_to = :userId',
+    {
+      userId: user.id,
+    },
+  );
+
+  // 6. Do not show solved/closed issues
+  queryBuilder.andWhere(
+  'issue.status = :status',
+  {
+    status: IssueStatus.IN_PROGRESS,
+  },
+);
+
+  // 7. Search
+  if (search) {
+    queryBuilder.andWhere(
+      new Brackets((qb) => {
+        qb.where('issue.title ILIKE :search', {
+          search: `%${search}%`,
+        })
+          .orWhere('issue.description ILIKE :search', {
             search: `%${search}%`,
           })
-            .orWhere('issue.description ILIKE :search', {
-              search: `%${search}%`,
-            })
-            .orWhere('issue.reporterName ILIKE :search', {
-              search: `%${search}%`,
-            })
-            .orWhere('issue.reporterMobile ILIKE :search', {
-              search: `%${search}%`,
-            })
-            .orWhere('CAST(issue.status AS TEXT) ILIKE :search', {
-              search: `%${search}%`,
-            })
-            .orWhere('CAST(issue.priority AS TEXT) ILIKE :search', {
-              search: `%${search}%`,
-            });
-        }),
-      );
-    }
-
-    // Sorting
-    await validateAndSort(
-      queryBuilder,
-      orderBy ?? 'createdAt',
-      sortOrder ?? 'DESC',
-      'issue',
-      [
-        'id',
-        'title',
-        'reporterName',
-        'reporterMobile',
-        'priority',
-        'status',
-        'createdAt',
-        'updatedAt',
-      ],
+          .orWhere('issue.reporterName ILIKE :search', {
+            search: `%${search}%`,
+          })
+          .orWhere('issue.reporterMobile ILIKE :search', {
+            search: `%${search}%`,
+          })
+          .orWhere('CAST(issue.status AS TEXT) ILIKE :search', {
+            search: `%${search}%`,
+          })
+          .orWhere('CAST(issue.priority AS TEXT) ILIKE :search', {
+            search: `%${search}%`,
+          });
+      }),
     );
-
-    // Pagination
-    return PaginationService.paginate(queryBuilder, paginationOptsDto);
   }
-}
+
+  // 8. Sorting
+  await validateAndSort(
+    queryBuilder,
+    orderBy ?? 'createdAt',
+    sortOrder ?? 'DESC',
+    'issue',
+    [
+      'id',
+      'title',
+      'reporterName',
+      'reporterMobile',
+      'priority',
+      'status',
+      'createdAt',
+      'updatedAt',
+    ],
+  );
+
+  // 9. Pagination
+  return PaginationService.paginate(
+    queryBuilder,
+    paginationOptsDto,
+  );
+}}
