@@ -1,4 +1,9 @@
-import { AssignedTo, Designation, IssuePriority, IssueStatus } from 'src/common/enums/issue.enum';
+import {
+  AssignedTo,
+  Designation,
+  IssuePriority,
+  IssueStatus,
+} from 'src/common/enums/issue.enum';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -9,6 +14,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { IssueAssignment } from './issues-assignment.entity';
 import { Comment } from './comment.entity';
@@ -30,6 +36,7 @@ export class Issue {
     return `ISSUE-${String(this.id).padStart(4, '0')}`;
   }
 
+  @Index()
   @ManyToOne(() => Company, { nullable: false })
   @JoinColumn({
     name: 'company_id',
@@ -55,7 +62,6 @@ export class Issue {
     default: IssueStatus.IN_PROGRESS,
   })
   status: IssueStatus;
-
 
   // @Column({
   //   type: 'enum',
@@ -85,8 +91,7 @@ export class Issue {
   @JoinColumn({ name: 'updated_by', referencedColumnName: 'id' })
   updatedBy: User;
 
-
-   @ManyToOne(() => User, { nullable: true })
+  @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'closed_by', referencedColumnName: 'id' })
   closedBy: User;
 

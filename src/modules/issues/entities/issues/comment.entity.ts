@@ -1,7 +1,15 @@
-import { Entity, PrimaryGeneratedColumn ,Column,Generated,CreateDateColumn,ManyToOne,JoinColumn} from "typeorm";
-import { User } from "src/modules/users/entities/user.entity";
-import { Issue } from "./issues.entity";
-
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  Generated,
+  CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  Index,
+} from 'typeorm';
+import { User } from 'src/modules/users/entities/user.entity';
+import { Issue } from './issues.entity';
 
 @Entity('comments')
 export class Comment {
@@ -37,8 +45,8 @@ export class Comment {
   issue: Issue;
 
   @ManyToOne(() => User, {
-  nullable: true,
-})
+    nullable: true,
+  })
   @JoinColumn({
     name: 'assigned_to',
     referencedColumnName: 'id',
@@ -46,10 +54,10 @@ export class Comment {
   assignedUser: User;
 
   @Column({
-  name: 'assigned_to',
-  nullable: true,
-})
-assignedTo: number | null;
+    name: 'assigned_to',
+    nullable: true,
+  })
+  assignedTo: number | null;
 
   @ManyToOne(() => User)
   @JoinColumn({

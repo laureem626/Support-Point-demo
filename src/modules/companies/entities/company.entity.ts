@@ -10,6 +10,7 @@ import {
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 @Entity('companies')
 export class Company {
@@ -31,6 +32,7 @@ export class Company {
   @Column()
   productId: number;
 
+  @Index()
   @ManyToOne(() => Product, (product) => product.companies, {
     onDelete: 'CASCADE',
   })
