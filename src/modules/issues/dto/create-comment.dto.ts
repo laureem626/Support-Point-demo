@@ -15,6 +15,7 @@ export class CreateCommentDto {
   @IsNotEmpty()
   issueId!: number;
 
+   @ApiProperty({ example: 1 })
    @IsInt()
   assignedId!: number;
 

@@ -1,5 +1,6 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IssueStatus } from 'src/common/enums/issue.enum';
 
 export class CloseIssueDto {
   @ApiPropertyOptional({
@@ -10,4 +11,13 @@ export class CloseIssueDto {
   @IsOptional()
   @IsString()
   comment?: string | null;
-}
+
+  @ApiProperty({
+  enum: IssueStatus,
+  default: IssueStatus.CLOSED,
+  example: IssueStatus.CLOSED,
+})
+@IsEnum(IssueStatus)
+@IsNotEmpty()
+status: IssueStatus;
+  }

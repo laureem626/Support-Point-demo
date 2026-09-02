@@ -340,11 +340,11 @@ if (!assignedUser) {
     }
 
     // FILTER
-    if (status) {
-      queryBuilder.andWhere('issue.status = :status', {
-        status,
-      });
-    }
+    // if (status) {
+    //   queryBuilder.andWhere('issue.status = :status', {
+    //     status,
+    //   });
+    // }
 
     if (priority) {
       queryBuilder.andWhere('issue.priority = :priority', {
@@ -367,16 +367,38 @@ if (!assignedUser) {
     queryBuilder.skip(skip).take(limit);
 
     const [issues, total] = await queryBuilder.getManyAndCount();
+  
+            const data = await Promise.all(
+    issues.map(async (issue) => {
+      const lastAssignment = await this.commentRepository
+        .createQueryBuilder('comment')
+        .leftJoinAndSelect(
+          'comment.assignedUser',
+          'assignedUser',
+        )
+        .where('comment.issueId = :issueId', {
+          issueId: issue.id,
+        })
+        .andWhere('comment.assignedTo IS NOT NULL')
+        .orderBy('comment.createdAt', 'DESC')
+        .getOne();
+
+        return {
+      ...issue,
+      currentAssignee: lastAssignment?.assignedUser ?? null,
+    };
+      }))
+
 
     return {
-      data: issues,
+      data,
       meta: {
         total,
         page,
         limit,
         totalPages: Math.ceil(total / limit),
       },
-    };
+    } ;
   }
   //GET ISSUE AND IT DETAILS
   async findByUuid(uuid: string) {

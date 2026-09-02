@@ -73,8 +73,8 @@ export class Issue {
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
-  updatedAt: Date;
+  // @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  // updatedAt: Date;
 
   // ID of the user who created the issue
   @ManyToOne(() => User, { nullable: false })
