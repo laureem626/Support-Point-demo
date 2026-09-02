@@ -385,7 +385,7 @@ if (!assignedUser) {
         .getOne();
 
         return {
-      ...issue,
+      ...instanceToPlain(issue),
       currentAssignee: lastAssignment?.assignedUser ?? null,
     };
       }))
