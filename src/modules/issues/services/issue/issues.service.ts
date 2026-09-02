@@ -98,6 +98,12 @@ export class IssuesService {
       throw new NotFoundException('Issue not found');
     }
 
+    if (issue.status === IssueStatus.CLOSED) {
+  throw new BadRequestException(
+    'Cannot assign a closed issue',
+  );
+}
+
     const currentUser = await this.userRepository.findOne({
     where: { uuid: userUuid },
   });
@@ -136,8 +142,7 @@ if (!assignedUser) {
     });
     const saved = await this.commentRepository.save(comment);
 
-    //issue.assignedTo = createCommentDto.assignedTo;
-    //await this.issueRepository.save(issue);
+  
 
     const result = await this.commentRepository.findOne({
       where: {
@@ -165,12 +170,22 @@ if (!assignedUser) {
   const currentDesignation = currentUser.designation;
   const assignedDesignation = assignedUser.designation;
 
+   if (
+    lastAssignment &&
+    lastAssignment.assignedTo === assignedUser.id
+  ) {
+    throw new BadRequestException(
+      'This issue is already assigned to this user',
+    );
+  }
+
   if (
   currentDesignation === Designation.SUPPORTER &&
   assignedDesignation === Designation.BA
 ) {
   return;
 }
+  
 
   // No previous assignment
   if (!lastAssignment) {
@@ -473,36 +488,43 @@ if (!assignedUser) {
 
   // CLOSE ISSUE
   async closeIssue(
-    uuid: string,
-    closeIssueDto: CloseIssueDto,
-    userUuid: string,
-  ) {
-    const issue = await this.issueRepository.findOne({
-      where: { uuid },
-    });
+  uuid: string,
+  closeIssueDto: CloseIssueDto,
+  userUuid: string,
+) {
+  const { comment } = closeIssueDto;
 
-    if (!issue) {
-      throw new NotFoundException(`Issue with UUID ${uuid} not found`);
-    }
+  const issue = await this.issueRepository.findOne({
+    where: { uuid },
+  });
 
-    const user = await this.userRepository.findOne({
-      where: { uuid: userUuid },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    issue.closedBy = user;
-    issue.status = IssueStatus.CLOSED;
-
-    await this.issueRepository.save(issue);
-
-    return {
-      statusCode: 200,
-      message: 'Issue closed successfully',
-    };
+  if (!issue) {
+    throw new NotFoundException(`Issue with UUID ${uuid} not found`);
   }
+
+  const user = await this.userRepository.findOne({
+    where: { uuid: userUuid },
+  });
+
+  if (!user) {
+    throw new NotFoundException('User not found');
+  }
+
+  // Backend ndiyo inaamua status
+  issue.closedBy = user;
+  issue.status = IssueStatus.CLOSED;
+
+  const savedIssue = await this.issueRepository.save(issue);
+
+  return {
+    statusCode: 200,
+    message: 'Issue closed successfully',
+    issueId: savedIssue.id,
+    uuid: savedIssue.uuid,
+    comment: comment,
+    status: savedIssue.status,
+  };
+}
 
 
   //Find my issue
