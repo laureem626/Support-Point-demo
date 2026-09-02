@@ -69,6 +69,7 @@ export class UserQueryDto {
     enumName: 'Designation',
     description: 'Filter users by designation',
   })
+  @IsOptional()
   @IsEnum(Designation)
   designation?: Designation;
 

@@ -39,6 +39,7 @@ export class IssuesController {
   create(@Body() createIssueDto: CreateIssueDto, @Req() req: any) {
     return this.issuesService.create(createIssueDto, req.user);
   }
+  
   @Post('comments')
   @ApiOperation({ summary: 'Create a comment' })
   @ApiResponse({ status: 201, description: 'Comment created successfully.' })
@@ -52,19 +53,7 @@ export class IssuesController {
   );
 }
   
-  //GET ALL ISSUES WITH PAGINATION AND FILTERING
-  // @ApiQuery({
-  //   name: 'page',
-  //   required: false,
-  //   type: Number,
-  //   example: 1,
-  // })
-  // @ApiQuery({
-  //   name: 'pageSize',
-  //   required: false,
-  //   type: Number,
-  //   example: 10,
-  // })
+ 
   @Get()
   @ApiOperation({ summary: 'Get all issues' })
   @ApiResponse({ status: 201, description: 'Issues retrieved successfully.' })
