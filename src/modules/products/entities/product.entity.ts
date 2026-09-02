@@ -15,8 +15,8 @@ import {
   Index,
 } from 'typeorm';
 @Entity('products')
-@Index(['createdAt', 'updatedAt'])
-@Index(['name', 'description'])
+// @Index(['createdAt', 'updatedAt'])
+// @Index(['name', 'description'])
 export class Product {
   @PrimaryGeneratedColumn()
   id: number;
@@ -52,7 +52,7 @@ export class Product {
   @JoinColumn({ name: 'created_by', referencedColumnName: 'id' })
   createdBy: User;
 
-  @ManyToOne(() => User, { nullable: false })
+  @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'updated_by', referencedColumnName: 'id' })
   updatedBy: User;
 }
