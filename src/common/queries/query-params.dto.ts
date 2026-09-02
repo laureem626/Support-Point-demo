@@ -61,14 +61,22 @@ export class QueryParamsDto {
   @IsOptional()
   @IsEnum(SortOrder)
   sortOrder?: SortOrder = SortOrder.DESC;
-  // @ApiPropertyOptional({
-  //   description: 'Filter by issue status',
-  //   example: 'OPEN',
-  //   enum: IssueStatus,
-  // })
-  // @IsOptional()
-  // @IsEnum(IssueStatus)
-  // status?: IssueStatus;
+
+  @ApiPropertyOptional({
+  description: 'Filter by issue status',
+  enum: IssueStatus,
+})
+@IsOptional()
+@Transform(({ value }) => {
+  if (value === '' || value === undefined || value === null) {
+    return undefined;
+  }
+
+  return value;
+})
+@IsEnum(IssueStatus)
+status?: IssueStatus;
+
   @ApiPropertyOptional({
     description: 'Filter by issue priority',
     example: 'low',

@@ -31,8 +31,8 @@ async function bootstrap() {
   //   prefix: '/media/',
   // });
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Support Point API')
-    .setDescription('API documentation for Support Point')
+    .setTitle('QELA SUPPORT')
+    .setDescription('API documentation for  QELA SUPPORT ')
     .setVersion('1.0')
     .addTag('Auth')
     .addTag('Users')

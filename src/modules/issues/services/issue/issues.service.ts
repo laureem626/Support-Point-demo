@@ -314,6 +314,7 @@ if (!assignedUser) {
       search,
       orderBy = 'createdAt',
       sortOrder = 'DESC',
+      status,
       priority,
     } = queryParamsDto;
 
@@ -340,11 +341,11 @@ if (!assignedUser) {
     }
 
     // FILTER
-    // if (status) {
-    //   queryBuilder.andWhere('issue.status = :status', {
-    //     status,
-    //   });
-    // }
+    if (status) {
+      queryBuilder.andWhere('issue.status = :status', {
+        status,
+      });
+    }
 
     if (priority) {
       queryBuilder.andWhere('issue.priority = :priority', {

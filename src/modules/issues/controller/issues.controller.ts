@@ -53,18 +53,18 @@ export class IssuesController {
 }
   
   //GET ALL ISSUES WITH PAGINATION AND FILTERING
-  @ApiQuery({
-    name: 'page',
-    required: false,
-    type: Number,
-    example: 1,
-  })
-  @ApiQuery({
-    name: 'pageSize',
-    required: false,
-    type: Number,
-    example: 10,
-  })
+  // @ApiQuery({
+  //   name: 'page',
+  //   required: false,
+  //   type: Number,
+  //   example: 1,
+  // })
+  // @ApiQuery({
+  //   name: 'pageSize',
+  //   required: false,
+  //   type: Number,
+  //   example: 10,
+  // })
   @Get()
   @ApiOperation({ summary: 'Get all issues' })
   @ApiResponse({ status: 201, description: 'Issues retrieved successfully.' })
