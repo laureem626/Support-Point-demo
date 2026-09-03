@@ -91,7 +91,17 @@ export class ProductsService {
         queryBuilder.andWhere('product.id = :productId', {
           productId,
         });
-      } else {
+      }  else if (/^\d+$/.test(search)) {
+    // 1 -> product ID 1
+    const productId = Number(search);
+
+    queryBuilder.andWhere('product.id = :productId', {
+      productId,
+    });
+
+  }
+      
+      else {
         // Search product name
         queryBuilder.andWhere('product.name ILIKE :search', {
           search: `%${search}%`,

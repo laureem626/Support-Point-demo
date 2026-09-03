@@ -108,7 +108,17 @@ export class CompaniesService {
         queryBuilder.andWhere('company.id = :companyId', {
           companyId,
         });
-      } else {
+      }  else if (/^\d+$/.test(search)) {
+    // 1 -> product ID 1
+    const companyId = Number(search);
+
+    queryBuilder.andWhere('company.id = :companyId', {
+      companyId,
+    });
+
+  }
+      
+      else {
         // Search company name
         queryBuilder.andWhere('company.name ILIKE :search', {
           search: `%${search}%`,

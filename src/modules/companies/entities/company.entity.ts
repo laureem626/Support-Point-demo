@@ -1,4 +1,4 @@
-import { Expose } from 'class-transformer';
+import { Expose, Exclude } from 'class-transformer';
 import { Product } from '../../products/entities/product.entity';
 import { User } from '../../users/entities/user.entity';
 import {
@@ -28,7 +28,7 @@ export class Company {
   get number(): string {
     return `COMP-${String(this.id).padStart(4, '0')}`;
   }
-
+  @Exclude()
   @Column()
   productId: number;
 
