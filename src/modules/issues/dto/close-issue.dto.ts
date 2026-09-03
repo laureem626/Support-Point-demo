@@ -20,9 +20,9 @@ export class CloseIssueDto {
 // @IsEnum(IssueStatus)
 // status: IssueStatus;
 
-   @ApiProperty({ example: 1 })
-     @IsInt()
-     @IsNotEmpty()
-     issueId!: number;
+  //  @ApiProperty({ example: 1 })
+  //    @IsInt()
+  //    @IsNotEmpty()
+  //    issueId!: number;
 
   }

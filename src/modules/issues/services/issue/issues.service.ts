@@ -519,7 +519,6 @@ if (!assignedUser) {
   return {
     statusCode: 200,
     message: 'Issue closed successfully',
-    issueId: savedIssue.id,
     uuid: savedIssue.uuid,
     comment: comment,
     status: savedIssue.status,
