@@ -1,4 +1,9 @@
-import {ConflictException, Injectable, NotFoundException,} from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Product } from '../entities/product.entity';
@@ -6,6 +11,7 @@ import { CreateProductDto } from '../dtos/create-product.dto';
 import { User } from '../../users/entities/user.entity';
 import { PaginationService } from '../../../common/pagination/pagination-service';
 import { ProductQueryDto } from '../dtos/product-query.dto';
+import { Designation } from 'src/modules/users/enums/users.enum';
 @Injectable()
 export class ProductsService {
   constructor(
@@ -23,6 +29,12 @@ export class ProductsService {
 
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    if (user.designation !== Designation.SUPPORTER) {
+      throw new ForbiddenException(
+        'Only System Supporter can create a product',
+      );
     }
 
     const existingProduct = await this.productRepository.findOne({
@@ -85,6 +97,12 @@ export class ProductsService {
           search: `%${search}%`,
         });
       }
+    }
+
+    // Check if searched product exists
+    const productExists = await queryBuilder.getOne();
+    if (!productExists) {
+      throw new NotFoundException('Product does not exist');
     }
 
     // Allowed sorting columns

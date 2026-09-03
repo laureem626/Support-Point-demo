@@ -37,10 +37,7 @@ export class UsersService {
     };
   }
 
-  async findAll(
-    query: UserQueryDto,
-    paginationOptsDto: PaginationOptionsDto,
-  ) {
+  async findAll(query: UserQueryDto, paginationOptsDto: PaginationOptionsDto) {
     const { search, orderBy, sortOrder, isActive, designation } = query;
 
     const queryBuilder = this.usersRepository
@@ -60,14 +57,14 @@ export class UsersService {
     // Filter based on active/not active
     if (isActive !== undefined) {
       queryBuilder.where('user.isActive = :isActive', {
-        isActive
+        isActive,
       });
     }
 
     // Filter by designation
     if (designation) {
       queryBuilder.andWhere('user.designation = :designation', {
-        designation
+        designation,
       });
     }
 
@@ -81,6 +78,11 @@ export class UsersService {
         )`,
         { search: `%${search}%` },
       );
+    }
+
+    const userExists = await queryBuilder.getOne();
+    if (!userExists) {
+      throw new NotFoundException('User does not exist');
     }
 
     //Sorting
