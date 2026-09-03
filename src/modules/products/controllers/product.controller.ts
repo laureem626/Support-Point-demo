@@ -14,7 +14,10 @@ import {
   Request,
   HttpStatus,
   Query,
+  Req,
+  Patch,
 } from '@nestjs/common';
+import { UpdateProductDto } from '../dtos/update-productdto';
 @Controller('api/products')
 @ApiTags('Products')
 @UseGuards(JwtAuthGuard)
@@ -46,6 +49,21 @@ export class ProductsController {
       data: product,
     };
   }
+
+  @Patch(':uuid')
+  @ApiOperation({ summary: 'update product' })
+  @ApiResponse({
+    status: 201,
+    description: 'Product updated successfully.',
+  })
+  UpdateProduct(
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+    @Body() updateDto: UpdateProductDto,
+    @Req() req,
+  ) {
+    return this.productsService.update(uuid, updateDto, req.user.id);
+  }
+
 
   // GET /api/products
   @Get()

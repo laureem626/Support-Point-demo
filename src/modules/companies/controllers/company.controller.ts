@@ -2,6 +2,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CreateCompanyDto } from '../dtos/create-company.dto';
 import { CompaniesService } from '../company.service';
 import { CompanyQueryDto } from '../dtos/company-query.dto';
+import { UpdateCompanyDto } from '../dtos/update-company.dto';
 import {ApiTags, ApiOperation, ApiResponse, ApiBearerAuth,} from '@nestjs/swagger';
 import {
   Controller,
@@ -14,7 +15,9 @@ import {
   UseGuards,
   Req,
   Query,
+  Patch,
 } from '@nestjs/common';
+import { UpdateProductDto } from 'src/modules/products/dtos/update-productdto';
 @ApiTags('Companies')
 @Controller('api/companies')
 @UseGuards(JwtAuthGuard)
@@ -40,6 +43,21 @@ export class CompaniesController {
       data,
     };
   }
+
+  @Patch(':uuid')
+  @ApiOperation({ summary: 'update company' })
+  @ApiResponse({
+    status: 201,
+    description: 'Company updated successfully.',
+  })
+  UpdateCompany(
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+    @Body() updateDto: UpdateCompanyDto,
+    @Req() req,
+  ) {
+    return this.companiesService.update(uuid, updateDto, req.user.id);
+  }
+
 
   // GET /api/companies
   @Get()

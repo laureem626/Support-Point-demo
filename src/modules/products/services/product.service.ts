@@ -5,13 +5,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { Product } from '../entities/product.entity';
 import { CreateProductDto } from '../dtos/create-product.dto';
 import { User } from '../../users/entities/user.entity';
 import { PaginationService } from '../../../common/pagination/pagination-service';
 import { ProductQueryDto } from '../dtos/product-query.dto';
 import { Designation } from 'src/modules/users/enums/users.enum';
+import { UpdateIssueStatusDto } from 'src/modules/issues/dto/update-issue.dto';
+import {UpdateProductDto} from "../dtos/update-productdto";
 @Injectable()
 export class ProductsService {
   constructor(
@@ -73,6 +75,87 @@ export class ProductsService {
 
     return product;
   }
+
+  //UPDATE PRODUCT
+async update(
+  uuid: string,
+  updateProductDto: UpdateProductDto,
+  userId: number,
+) {
+  const product = await this.productRepository.findOne({
+    where: { uuid },
+  });
+
+  if (!product) {
+    throw new NotFoundException(
+      `Product with UUID ${uuid} not found`,
+    );
+  }
+
+  const user = await this.userRepository.findOne({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new NotFoundException(
+      `User with ID ${userId} not found`,
+    );
+  }
+
+  if (user.designation !== Designation.SUPPORTER) {
+    throw new ForbiddenException(
+      'Only System Supporter can update a product',
+    );
+  }
+
+  // Check duplicate product name only if name is being changed
+  if (updateProductDto.name) {
+    const existingProduct = await this.productRepository.findOne({
+      where: {
+        name: updateProductDto.name,
+        id: Not(product.id),
+      },
+    });
+
+    if (existingProduct) {
+      throw new ConflictException(
+        `Product "${updateProductDto.name}" already exists`,
+      );
+    }
+
+    product.name = updateProductDto.name;
+  }
+
+  if (updateProductDto.description !== undefined) {
+    product.description = updateProductDto.description;
+  }
+
+  if (updateProductDto.link !== undefined) {
+    product.link = updateProductDto.link;
+  }
+
+  product.updatedBy = user;
+
+  await this.productRepository.save(product);
+
+  const updatedProduct = await this.productRepository.findOne({
+    where: { uuid },
+    relations: {
+      createdBy: true,
+      updatedBy: true,
+    },
+  });
+
+  if (!updatedProduct) {
+    throw new NotFoundException(
+      'Updated product could not be retrieved',
+    );
+  }
+
+  return updatedProduct;
+}
+
+
 
   async findAll(query: ProductQueryDto) {
     const queryBuilder = this.productRepository
