@@ -91,6 +91,22 @@ export class IssuesController {
   ) {
     return this.issuesService.closeIssue(uuid, closeIssueDto, req.user.uuid);
   }
+
+    //SUPPOTER ISSUES
+    @Get('supporter/issues')
+async findSupporterIssues(
+  @Req() req,
+  @Query() queryParamsDto: QueryParamsDto,
+  @Query() paginationOptsDto: PaginationOptionsDto,
+) {
+  return this.issuesService.findSupporterIssues(
+    req.user.uuid,
+    queryParamsDto,
+    paginationOptsDto,
+  );
+}
+
+
   //GET MY ISSUES
   @ApiQuery({
     name: 'page',

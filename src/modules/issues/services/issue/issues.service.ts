@@ -23,6 +23,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { AssignedTo, Designation, IssueStatus } from 'src/common/enums/issue.enum';
 import { QueryParamsDto } from 'src/common/queries/query-params.dto';
@@ -45,6 +46,12 @@ export class IssuesService {
 
   async create(createIssueDto: CreateIssueDto, user: User) {
     const { companyId, ...issueData } = createIssueDto;
+
+    if (user.designation !== Designation.SUPPORTER) {
+    throw new ForbiddenException(
+      'Only Supporter can create an issue',
+    );
+  }
 
     const company = await this.companyRepository.findOne({
       where: {
@@ -211,6 +218,16 @@ if (!assignedUser) {
     );
   }
 
+   if (
+    lastAssignment &&
+    lastAssignment.createdBy?.designation === Designation.QA &&
+    currentDesignation === Designation.SUPPORTER &&
+    assignedDesignation === Designation.BA
+  ) {
+    throw new ForbiddenException(
+      'A Supporter cannot assign this issue to a BA after receiving it from QA',
+    );
+  }
   // -----------------------------------------
   // SUPPORTER → BA
   // -----------------------------------------
@@ -347,7 +364,8 @@ if (!assignedUser) {
         issue.title ILIKE :search OR
         issue.description ILIKE :search OR
         issue.reporterName ILIKE :search OR
-        issue.reporterMobile ILIKE :search
+        issue.reporterMobile ILIKE :search OR
+        
       )`,
         {
           search: `%${search}%`,
@@ -487,21 +505,26 @@ if (!assignedUser) {
   }
 
   // CLOSE ISSUE
-  async closeIssue(
+  // CLOSE ISSUE
+async closeIssue(
   uuid: string,
   closeIssueDto: CloseIssueDto,
   userUuid: string,
 ) {
   const { comment } = closeIssueDto;
 
+  // 1. Find the issue
   const issue = await this.issueRepository.findOne({
     where: { uuid },
   });
 
   if (!issue) {
-    throw new NotFoundException(`Issue with UUID ${uuid} not found`);
+    throw new NotFoundException(
+      `Issue with UUID ${uuid} not found`,
+    );
   }
 
+  // 2. Find the user trying to close the issue
   const user = await this.userRepository.findOne({
     where: { uuid: userUuid },
   });
@@ -510,7 +533,31 @@ if (!assignedUser) {
     throw new NotFoundException('User not found');
   }
 
-  // Backend ndiyo inaamua status
+  // 3. Only a SUPPORTER can close an issue
+  if (user.designation !== Designation.SUPPORTER) {
+    throw new BadRequestException(
+      'Only a Supporter can close an issue.',
+    );
+  }
+
+  // 4. Get the latest assignment for this issue
+  const lastAssignment = await this.commentRepository
+    .createQueryBuilder('comment')
+    .where('comment.issueId = :issueId', {
+      issueId: issue.id,
+    })
+    .andWhere('comment.assignedTo IS NOT NULL')
+    .orderBy('comment.createdAt', 'DESC')
+    .getOne();
+
+  // 5. If the issue is currently assigned, Supporter cannot close it
+  if (lastAssignment) {
+    throw new BadRequestException(
+      'This issue is currently assigned and cannot be closed by a Supporter.',
+    );
+  }
+
+  // 6. Close the issue
   issue.closedBy = user;
   issue.status = IssueStatus.CLOSED;
 
@@ -519,8 +566,9 @@ if (!assignedUser) {
   return {
     statusCode: 200,
     message: 'Issue closed successfully',
+    issueId: savedIssue.id,
     uuid: savedIssue.uuid,
-    comment: comment,
+    comment,
     status: savedIssue.status,
   };
 }
@@ -635,4 +683,298 @@ if (!assignedUser) {
     queryBuilder,
     paginationOptsDto,
   );
-}}
+}
+
+//SUPPORTER ISSUES 
+async findSupporterIssues(
+  userUuid: string,
+  queryParamsDto: QueryParamsDto,
+  paginationOptsDto: PaginationOptionsDto,
+) {
+  const {
+    search,
+    orderBy = 'createdAt',
+    sortOrder = 'DESC',
+    status,
+    priority,
+  } = queryParamsDto;
+
+  // -----------------------------------------
+  // 1. Validate user UUID
+  // -----------------------------------------
+  if (!isUUID(userUuid)) {
+    throw new BadRequestException(
+      'Invalid user UUID',
+    );
+  }
+
+  // -----------------------------------------
+  // 2. Find logged-in user
+  // -----------------------------------------
+  const supporter = await this.userRepository.findOne({
+    where: {
+      uuid: userUuid,
+    },
+  });
+
+  if (!supporter) {
+    throw new NotFoundException(
+      'User not found',
+    );
+  }
+
+  // -----------------------------------------
+  // 3. Make sure user is a Supporter
+  // -----------------------------------------
+  if (
+    supporter.designation !==
+    Designation.SUPPORTER
+  ) {
+    throw new ForbiddenException(
+      'Only Supporters can access this endpoint.',
+    );
+  }
+
+  // -----------------------------------------
+  // 4. Build issue query
+  // -----------------------------------------
+  const queryBuilder = this.issueRepository
+    .createQueryBuilder('issue')
+
+    .leftJoinAndSelect(
+      'issue.company',
+      'company',
+    )
+
+    .leftJoinAndSelect(
+      'company.product',
+      'product',
+    )
+
+    .leftJoinAndSelect(
+      'issue.createdBy',
+      'createdBy',
+    )
+
+    .leftJoinAndSelect(
+      'issue.updatedBy',
+      'updatedBy',
+    );
+
+  // -----------------------------------------
+  // 5. SEARCH
+  // -----------------------------------------
+  if (search) {
+    queryBuilder.andWhere(
+      `(
+        issue.title ILIKE :search OR
+        issue.description ILIKE :search OR
+        issue.reporterName ILIKE :search OR
+        issue.reporterMobile ILIKE :search
+      )`,
+      {
+        search: `%${search}%`,
+      },
+    );
+  }
+
+  // -----------------------------------------
+  // 6. STATUS FILTER
+  // -----------------------------------------
+  if (status) {
+    queryBuilder.andWhere(
+      'issue.status = :status',
+      {
+        status,
+      },
+    );
+  }
+
+  // -----------------------------------------
+  // 7. PRIORITY FILTER
+  // -----------------------------------------
+  if (priority) {
+    queryBuilder.andWhere(
+      'issue.priority = :priority',
+      {
+        priority,
+      },
+    );
+  }
+
+  // -----------------------------------------
+  // 8. SORT
+  // -----------------------------------------
+  queryBuilder.orderBy(
+    `issue.${orderBy}`,
+    sortOrder === 'ASC'
+      ? 'ASC'
+      : 'DESC',
+  );
+
+  // -----------------------------------------
+  // 9. Get issues
+  // -----------------------------------------
+  const issues =
+    await queryBuilder.getMany();
+
+  const assignedToMe: any[] = [];
+const assignedByMe: any[] = [];
+
+  // -----------------------------------------
+  // 10. Check every issue
+  // -----------------------------------------
+  for (const issue of issues) {
+
+    // ---------------------------------------
+    // Get latest assignment
+    // ---------------------------------------
+    const lastAssignment =
+      await this.commentRepository
+        .createQueryBuilder('comment')
+
+        .leftJoinAndSelect(
+          'comment.assignedUser',
+          'assignedUser',
+        )
+
+        .where(
+          'comment.issueId = :issueId',
+          {
+            issueId: issue.id,
+          },
+        )
+
+        .andWhere(
+          'comment.assignedTo IS NOT NULL',
+        )
+
+        .orderBy(
+          'comment.createdAt',
+          'DESC',
+        )
+
+        .getOne();
+
+    // ---------------------------------------
+    // No assignment
+    //
+    // We DON'T return it.
+    // ---------------------------------------
+    if (!lastAssignment) {
+      continue;
+    }
+
+    // ---------------------------------------
+    // A. CURRENTLY ASSIGNED TO ME
+    // ---------------------------------------
+    if (
+      lastAssignment.assignedTo ===
+      supporter.id
+    ) {
+      assignedToMe.push({
+        ...instanceToPlain(issue),
+
+        currentAssignee:
+          lastAssignment.assignedUser,
+
+        assignmentStatus:
+          'ASSIGNED_TO_ME',
+      });
+    }
+
+    // ---------------------------------------
+    // B. CHECK IF SUPPORTER ASSIGNED
+    // THIS ISSUE BEFORE
+    // ---------------------------------------
+    const assignmentByMe =
+      await this.commentRepository
+        .createQueryBuilder('comment')
+
+        .where(
+          'comment.issueId = :issueId',
+          {
+            issueId: issue.id,
+          },
+        )
+
+        .andWhere(
+          'comment.createdById = :supporterId',
+          {
+            supporterId: supporter.id,
+          },
+        )
+
+        .andWhere(
+          'comment.assignedTo IS NOT NULL',
+        )
+
+        .getOne();
+
+    // ---------------------------------------
+    // Supporter previously assigned this issue
+    // to another person
+    // ---------------------------------------
+    if (
+      assignmentByMe &&
+      lastAssignment.assignedTo !==
+        supporter.id
+    ) {
+      assignedByMe.push({
+        ...instanceToPlain(issue),
+
+        currentAssignee:
+          lastAssignment.assignedUser,
+
+        assignmentStatus:
+          'ASSIGNED_BY_ME',
+      });
+    }
+  }
+
+  // -----------------------------------------
+  // 11. Combine the two groups
+  //
+  // An issue currently assigned to me should
+  // not appear twice.
+  // -----------------------------------------
+  const result = [
+    ...assignedToMe,
+    ...assignedByMe,
+  ];
+
+  // -----------------------------------------
+  // 12. Pagination
+  // -----------------------------------------
+  const page =
+    paginationOptsDto.page || 1;
+
+  const limit =
+    paginationOptsDto.pageSize || 10;
+
+  const skip =
+    (page - 1) * limit;
+
+  const total = result.length;
+
+  const data = result.slice(
+    skip,
+    skip + limit,
+  );
+
+  // -----------------------------------------
+  // 13. Response
+  // -----------------------------------------
+  return {
+    data,
+
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages:
+        Math.ceil(total / limit),
+    },
+  };
+}
+}
