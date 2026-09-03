@@ -361,11 +361,13 @@ if (!assignedUser) {
     if (search) {
       queryBuilder.andWhere(
         `(
+          
         issue.title ILIKE :search OR
         issue.description ILIKE :search OR
         issue.reporterName ILIKE :search OR
         issue.reporterMobile ILIKE :search OR
-        
+       CONCAT('ISSUE-', LPAD(issue.id::text, 4, '0')) ILIKE :search OR
+      issue.id::text ILIKE :search
       )`,
         {
           search: `%${search}%`,

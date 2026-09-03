@@ -30,7 +30,7 @@ import { UsersService } from '../users/services/users/users.service';
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('jwt.secret_key'),
         signOptions: {
-          expiresIn: '1d',
+          expiresIn: '7d',
         },
       }),
     }),
