@@ -58,10 +58,11 @@ export class IssuesController {
   @ApiOperation({ summary: 'Get all issues' })
   @ApiResponse({ status: 201, description: 'Issues retrieved successfully.' })
   async findAll(
+     @Req() req,
     @Query() queryParamsDto: QueryParamsDto,
     @Query() paginationOptsDto: PaginationOptionsDto,
   ) {
-    return this.issuesService.findAll(queryParamsDto, paginationOptsDto);
+    return this.issuesService.findAll(req.user.uuid, queryParamsDto, paginationOptsDto);
   }
 
   @Patch(':uuid')
@@ -92,19 +93,8 @@ export class IssuesController {
     return this.issuesService.closeIssue(uuid, closeIssueDto, req.user.uuid);
   }
 
-    //SUPPOTER ISSUES
-    @Get('supporter/issues')
-async findSupporterIssues(
-  @Req() req,
-  @Query() queryParamsDto: QueryParamsDto,
-  @Query() paginationOptsDto: PaginationOptionsDto,
-) {
-  return this.issuesService.findSupporterIssues(
-    req.user.uuid,
-    queryParamsDto,
-    paginationOptsDto,
-  );
-}
+   
+
 
 
   //GET MY ISSUES

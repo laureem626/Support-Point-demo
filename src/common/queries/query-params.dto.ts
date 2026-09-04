@@ -79,7 +79,6 @@ status?: IssueStatus;
 
   @ApiPropertyOptional({
     description: 'Filter by issue priority',
-    example: 'low',
     enum: IssuePriority,
   })
   @IsOptional()

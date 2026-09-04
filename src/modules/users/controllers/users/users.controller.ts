@@ -43,14 +43,14 @@ export class UsersController {
     return await this.usersService.findAll(queryParamsDto, paginationOptsDto);
   }
 
-@ApiOperation({ summary: 'Get user profile' })
-  @ApiResponse({ status: 201, description: 'User profile retrieved successfully.' })
-  @Get(':uuid/profile')
-async getUserProfile(
-  @Param('uuid', new ParseUUIDPipe()) uuid: string,
-) {
-  return this.usersService.getUserProfile(uuid);
-}
+// @ApiOperation({ summary: 'Get user profile' })
+//   @ApiResponse({ status: 201, description: 'User profile retrieved successfully.' })
+//   @Get(':uuid/profile')
+// async getUserProfile(
+//   @Param('uuid', new ParseUUIDPipe()) uuid: string,
+// ) {
+//   return this.usersService.getUserProfile(uuid);
+// }
 
   @ApiOperation({ summary: 'Get a user' })
   @ApiResponse({ status: 201, description: 'User retrieved successfully.' })

@@ -339,72 +339,135 @@ if (!assignedUser) {
 
   //GET ALL ISSUES
   async findAll(
-    queryParamsDto: QueryParamsDto,
-    paginationOptsDto: PaginationOptionsDto,
-  ) {
-    const {
-      search,
-      orderBy = 'createdAt',
-      sortOrder = 'DESC',
-      status,
-      priority,
-    } = queryParamsDto;
+  userUuid: string,
+  queryParamsDto: QueryParamsDto,
+  paginationOptsDto: PaginationOptionsDto,
+) {
+  const {
+    search,
+    orderBy = 'createdAt',
+    sortOrder = 'DESC',
+    status,
+    priority,
+  } = queryParamsDto;
 
-    const queryBuilder = this.issueRepository
-      .createQueryBuilder('issue')
-      .leftJoinAndSelect('issue.company', 'company')
-      .leftJoinAndSelect('company.product', 'product')
-      .leftJoinAndSelect('issue.createdBy', 'createdBy')
-      .leftJoinAndSelect('issue.updatedBy', 'updatedBy');
+  // 1. Validate user UUID
+  if (!isUUID(userUuid)) {
+    throw new BadRequestException('Invalid user UUID');
+  }
 
-    // SEARCH
-    if (search) {
-      queryBuilder.andWhere(
-        `(
-          
+  // 2. Find logged-in user
+  const user = await this.userRepository.findOne({
+    where: { uuid: userUuid },
+  });
+
+  if (!user) {
+    throw new NotFoundException('User not found');
+  }
+
+  // 3. Build issue query
+  const queryBuilder = this.issueRepository
+    .createQueryBuilder('issue')
+    .leftJoinAndSelect('issue.company', 'company')
+    .leftJoinAndSelect('company.product', 'product')
+    .leftJoinAndSelect('issue.createdBy', 'createdBy')
+    .leftJoinAndSelect('issue.updatedBy', 'updatedBy');
+
+  // =========================================================
+  // 4. ACCESS CONTROL
+  // =========================================================
+
+  if (user.designation === Designation.SUPPORTER) {
+  // Supporter can only see issues created by themselves
+  queryBuilder.andWhere(
+    'issue.created_by = :userId',
+    {
+      userId: user.id,
+    },
+  );
+} else if (user.designation !== Designation.SYSTEM_ADMIN) {
+  queryBuilder.andWhere(
+    `EXISTS (
+      SELECT 1
+      FROM comments assignment
+      WHERE assignment.issue_id = issue.id
+        AND assignment.created_by = :userId 
+        AND assignment.assigned_to IS NOT NULL
+        AND assignment.assigned_to != :userId
+    )`,
+    {
+      userId: user.id,
+    },
+  );
+}
+
+  // =========================================================
+  // 5. SEARCH
+  // =========================================================
+
+  if (search) {
+    queryBuilder.andWhere(
+      `(
         issue.title ILIKE :search OR
         issue.description ILIKE :search OR
         issue.reporterName ILIKE :search OR
         issue.reporterMobile ILIKE :search OR
-       CONCAT('ISSUE-', LPAD(issue.id::text, 4, '0')) ILIKE :search OR
-      issue.id::text ILIKE :search
+        CONCAT('ISSUE-', LPAD(issue.id::text, 4, '0')) ILIKE :search OR
+        issue.id::text ILIKE :search
       )`,
-        {
-          search: `%${search}%`,
-        },
-      );
-    }
-
-    // FILTER
-    if (status) {
-      queryBuilder.andWhere('issue.status = :status', {
-        status,
-      });
-    }
-
-    if (priority) {
-      queryBuilder.andWhere('issue.priority = :priority', {
-        priority,
-      });
-    }
-
-    // SORT
-    queryBuilder.orderBy(
-      `issue.${orderBy}`,
-      sortOrder === 'ASC' ? 'ASC' : 'DESC',
+      {
+        search: `%${search}%`,
+      },
     );
+  }
 
-    // PAGINATION
-    const page = paginationOptsDto.page || 1;
-    const limit = paginationOptsDto.pageSize || 10;
+  // =========================================================
+  // 6. FILTER
+  // =========================================================
 
-    const skip = (page - 1) * limit;
+  if (status) {
+    queryBuilder.andWhere('issue.status = :status', {
+      status,
+    });
+  }
 
-    queryBuilder.skip(skip).take(limit);
+  if (priority) {
+    queryBuilder.andWhere('issue.priority = :priority', {
+      priority,
+    });
+  }
 
-    const [issues, total] = await queryBuilder.getManyAndCount();
-  
-            const data = await Promise.all(
+  // =========================================================
+  // 7. SORT
+  // =========================================================
+
+  queryBuilder.orderBy(
+    `issue.${orderBy}`,
+    sortOrder === 'ASC' ? 'ASC' : 'DESC',
+  );
+
+  // =========================================================
+  // 8. PAGINATION
+  // =========================================================
+
+  const page = paginationOptsDto.page || 1;
+  const limit = paginationOptsDto.pageSize || 10;
+
+  const skip = (page - 1) * limit;
+
+  queryBuilder.skip(skip).take(limit);
+
+  // =========================================================
+  // 9. GET ISSUES
+  // =========================================================
+
+  const [issues, total] = await queryBuilder.getManyAndCount();
+
+  // =========================================================
+  // 10. GET CURRENT ASSIGNEE
+  // =========================================================
+
+  const data = await Promise.all(
     issues.map(async (issue) => {
       const lastAssignment = await this.commentRepository
         .createQueryBuilder('comment')
@@ -419,23 +482,27 @@ if (!assignedUser) {
         .orderBy('comment.createdAt', 'DESC')
         .getOne();
 
-        return {
-      ...instanceToPlain(issue),
-      currentAssignee: lastAssignment?.assignedUser ?? null,
-    };
-      }))
+      return {
+        ...instanceToPlain(issue),
+        currentAssignee: lastAssignment?.assignedUser ?? null,
+      };
+    }),
+  );
 
+  // =========================================================
+  // 11. RESPONSE
+  // =========================================================
 
-    return {
-      data,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    } ;
-  }
+  return {
+    data,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
   //GET ISSUE AND IT DETAILS
   async findByUuid(uuid: string) {
     const issue = await this.issueRepository.findOne({
@@ -608,35 +675,89 @@ async closeIssue(
     .leftJoinAndSelect('issue.comments', 'comment')
     .leftJoinAndSelect('comment.assignedUser', 'assignedUser');
 
-  // 4. Get only the latest assignment for each issue
-  queryBuilder.andWhere(
-    `comment.id = (
-      SELECT c.id
-      FROM comments c
-      WHERE c.issue_id = issue.id
-      AND c.assigned_to IS NOT NULL
-      ORDER BY c.created_at DESC
-      LIMIT 1
-    )`,
-  );
+  // ============================================================
+  // 4. MY ISSUES
+  // ============================================================
 
-  // 5. Make sure the latest assignment belongs to the logged-in user
+  if (user.designation === Designation.SUPPORTER) {
+    queryBuilder.andWhere(
+      new Brackets((qb) => {
+
+        // A. Issues created by me AND not assigned to anyone
+        qb.where(
+          `issue.created_by = :userId
+           AND NOT EXISTS (
+             SELECT 1
+             FROM comments c1
+             WHERE c1.issue_id = issue.id
+               AND c1.assigned_to IS NOT NULL
+           )`,
+        );
+
+        // B. OR issues currently assigned to me
+        qb.orWhere(
+          `EXISTS (
+             SELECT 1
+             FROM comments c2
+             WHERE c2.issue_id = issue.id
+               AND c2.assigned_to = :userId
+               AND c2.id = (
+                 SELECT c3.id
+                 FROM comments c3
+                 WHERE c3.issue_id = issue.id
+                   AND c3.assigned_to IS NOT NULL
+                 ORDER BY c3.created_at DESC
+                 LIMIT 1
+               )
+           )`,
+        );
+      }),
+      {
+        userId: user.id,
+      },
+    );
+  } else {
+    // ============================================================
+    // BA / DEVELOPER / QA
+    // Only issues currently assigned to me
+    // ============================================================
+
+    queryBuilder.andWhere(
+      `EXISTS (
+        SELECT 1
+        FROM comments c
+        WHERE c.issue_id = issue.id
+          AND c.assigned_to = :userId
+          AND c.id = (
+            SELECT c2.id
+            FROM comments c2
+            WHERE c2.issue_id = issue.id
+              AND c2.assigned_to IS NOT NULL
+            ORDER BY c2.created_at DESC
+            LIMIT 1
+          )
+      )`,
+      {
+        userId: user.id,
+      },
+    );
+  }
+
+  // ============================================================
+  // 5. ONLY IN PROGRESS ISSUES
+  // ============================================================
+
   queryBuilder.andWhere(
-    'comment.assigned_to = :userId',
+    'issue.status = :status',
     {
-      userId: user.id,
+      status: IssueStatus.IN_PROGRESS,
     },
   );
 
-  // 6. Do not show solved/closed issues
-  queryBuilder.andWhere(
-  'issue.status = :status',
-  {
-    status: IssueStatus.IN_PROGRESS,
-  },
-);
+  // ============================================================
+  // 6. SEARCH
+  // ============================================================
 
-  // 7. Search
   if (search) {
     queryBuilder.andWhere(
       new Brackets((qb) => {
@@ -662,7 +783,10 @@ async closeIssue(
     );
   }
 
-  // 8. Sorting
+  // ============================================================
+  // 7. SORTING
+  // ============================================================
+
   await validateAndSort(
     queryBuilder,
     orderBy ?? 'createdAt',
@@ -680,303 +804,15 @@ async closeIssue(
     ],
   );
 
-  // 9. Pagination
+  // ============================================================
+  // 8. PAGINATION
+  // ============================================================
+
   return PaginationService.paginate(
     queryBuilder,
     paginationOptsDto,
   );
 }
 
-//SUPPORTER ISSUES 
-async findSupporterIssues(
-  userUuid: string,
-  queryParamsDto: QueryParamsDto,
-  paginationOptsDto: PaginationOptionsDto,
-) {
-  const {
-    search,
-    orderBy = 'createdAt',
-    sortOrder = 'DESC',
-    status,
-    priority,
-  } = queryParamsDto;
 
-  // -----------------------------------------
-  // 1. Validate user UUID
-  // -----------------------------------------
-  if (!isUUID(userUuid)) {
-    throw new BadRequestException(
-      'Invalid user UUID',
-    );
-  }
-
-  // -----------------------------------------
-  // 2. Find logged-in user
-  // -----------------------------------------
-  const supporter = await this.userRepository.findOne({
-    where: {
-      uuid: userUuid,
-    },
-  });
-
-  if (!supporter) {
-    throw new NotFoundException(
-      'User not found',
-    );
-  }
-
-  // -----------------------------------------
-  // 3. Make sure user is a Supporter
-  // -----------------------------------------
-  if (
-    supporter.designation !==
-    Designation.SUPPORTER
-  ) {
-    throw new ForbiddenException(
-      'Only Supporters can access this endpoint.',
-    );
-  }
-
-  // -----------------------------------------
-  // 4. Build issue query
-  // -----------------------------------------
-  const queryBuilder = this.issueRepository
-    .createQueryBuilder('issue')
-
-    .leftJoinAndSelect(
-      'issue.company',
-      'company',
-    )
-
-    .leftJoinAndSelect(
-      'company.product',
-      'product',
-    )
-
-    .leftJoinAndSelect(
-      'issue.createdBy',
-      'createdBy',
-    )
-
-    .leftJoinAndSelect(
-      'issue.updatedBy',
-      'updatedBy',
-    );
-
-  // -----------------------------------------
-  // 5. SEARCH
-  // -----------------------------------------
-  if (search) {
-    queryBuilder.andWhere(
-      `(
-        issue.title ILIKE :search OR
-        issue.description ILIKE :search OR
-        issue.reporterName ILIKE :search OR
-        issue.reporterMobile ILIKE :search
-      )`,
-      {
-        search: `%${search}%`,
-      },
-    );
-  }
-
-  // -----------------------------------------
-  // 6. STATUS FILTER
-  // -----------------------------------------
-  if (status) {
-    queryBuilder.andWhere(
-      'issue.status = :status',
-      {
-        status,
-      },
-    );
-  }
-
-  // -----------------------------------------
-  // 7. PRIORITY FILTER
-  // -----------------------------------------
-  if (priority) {
-    queryBuilder.andWhere(
-      'issue.priority = :priority',
-      {
-        priority,
-      },
-    );
-  }
-
-  // -----------------------------------------
-  // 8. SORT
-  // -----------------------------------------
-  queryBuilder.orderBy(
-    `issue.${orderBy}`,
-    sortOrder === 'ASC'
-      ? 'ASC'
-      : 'DESC',
-  );
-
-  // -----------------------------------------
-  // 9. Get issues
-  // -----------------------------------------
-  const issues =
-    await queryBuilder.getMany();
-
-  const assignedToMe: any[] = [];
-const assignedByMe: any[] = [];
-
-  // -----------------------------------------
-  // 10. Check every issue
-  // -----------------------------------------
-  for (const issue of issues) {
-
-    // ---------------------------------------
-    // Get latest assignment
-    // ---------------------------------------
-    const lastAssignment =
-      await this.commentRepository
-        .createQueryBuilder('comment')
-
-        .leftJoinAndSelect(
-          'comment.assignedUser',
-          'assignedUser',
-        )
-
-        .where(
-          'comment.issueId = :issueId',
-          {
-            issueId: issue.id,
-          },
-        )
-
-        .andWhere(
-          'comment.assignedTo IS NOT NULL',
-        )
-
-        .orderBy(
-          'comment.createdAt',
-          'DESC',
-        )
-
-        .getOne();
-
-    // ---------------------------------------
-    // No assignment
-    //
-    // We DON'T return it.
-    // ---------------------------------------
-    if (!lastAssignment) {
-      continue;
-    }
-
-    // ---------------------------------------
-    // A. CURRENTLY ASSIGNED TO ME
-    // ---------------------------------------
-    if (
-      lastAssignment.assignedTo ===
-      supporter.id
-    ) {
-      assignedToMe.push({
-        ...instanceToPlain(issue),
-
-        currentAssignee:
-          lastAssignment.assignedUser,
-
-        assignmentStatus:
-          'ASSIGNED_TO_ME',
-      });
-    }
-
-    // ---------------------------------------
-    // B. CHECK IF SUPPORTER ASSIGNED
-    // THIS ISSUE BEFORE
-    // ---------------------------------------
-    const assignmentByMe =
-      await this.commentRepository
-        .createQueryBuilder('comment')
-
-        .where(
-          'comment.issueId = :issueId',
-          {
-            issueId: issue.id,
-          },
-        )
-
-        .andWhere(
-          'comment.createdById = :supporterId',
-          {
-            supporterId: supporter.id,
-          },
-        )
-
-        .andWhere(
-          'comment.assignedTo IS NOT NULL',
-        )
-
-        .getOne();
-
-    // ---------------------------------------
-    // Supporter previously assigned this issue
-    // to another person
-    // ---------------------------------------
-    if (
-      assignmentByMe &&
-      lastAssignment.assignedTo !==
-        supporter.id
-    ) {
-      assignedByMe.push({
-        ...instanceToPlain(issue),
-
-        currentAssignee:
-          lastAssignment.assignedUser,
-
-        assignmentStatus:
-          'ASSIGNED_BY_ME',
-      });
-    }
-  }
-
-  // -----------------------------------------
-  // 11. Combine the two groups
-  //
-  // An issue currently assigned to me should
-  // not appear twice.
-  // -----------------------------------------
-  const result = [
-    ...assignedToMe,
-    ...assignedByMe,
-  ];
-
-  // -----------------------------------------
-  // 12. Pagination
-  // -----------------------------------------
-  const page =
-    paginationOptsDto.page || 1;
-
-  const limit =
-    paginationOptsDto.pageSize || 10;
-
-  const skip =
-    (page - 1) * limit;
-
-  const total = result.length;
-
-  const data = result.slice(
-    skip,
-    skip + limit,
-  );
-
-  // -----------------------------------------
-  // 13. Response
-  // -----------------------------------------
-  return {
-    data,
-
-    meta: {
-      total,
-      page,
-      limit,
-      totalPages:
-        Math.ceil(total / limit),
-    },
-  };
-}
 }
