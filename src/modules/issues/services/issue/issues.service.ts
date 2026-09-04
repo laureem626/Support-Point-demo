@@ -698,70 +698,84 @@ async closeIssue(
   // 4. MY ISSUES
   // ============================================================
 
-  if (user.designation === Designation.SUPPORTER) {
-    queryBuilder.andWhere(
-      new Brackets((qb) => {
+ // ============================================================
+// 4. MY ISSUES
+// ============================================================
 
-        // A. Issues created by me AND not assigned to anyone
-        qb.where(
-          `issue.created_by = :userId
-           AND NOT EXISTS (
-             SELECT 1
-             FROM comments c1
-             WHERE c1.issue_id = issue.id
-               AND c1.assigned_to IS NOT NULL
-           )`,
-        );
+if (user.designation === Designation.SUPPORTER) {
+  queryBuilder.andWhere(
+    new Brackets((qb) => {
+      
+      // A. Issues created by me AND not assigned to anyone
+      qb.where(
+        `issue.created_by = :userId
+         AND NOT EXISTS (
+           SELECT 1
+           FROM comments c1
+           WHERE c1.issue_id = issue.id
+             AND c1.assigned_to IS NOT NULL
+         )`,
+      );
 
-        // B. OR issues currently assigned to me
-        qb.orWhere(
-          `EXISTS (
-             SELECT 1
-             FROM comments c2
-             WHERE c2.issue_id = issue.id
-               AND c2.assigned_to = :userId
-               AND c2.id = (
-                 SELECT c3.id
-                 FROM comments c3
-                 WHERE c3.issue_id = issue.id
-                   AND c3.assigned_to IS NOT NULL
-                 ORDER BY c3.created_at DESC
-                 LIMIT 1
-               )
-           )`,
-        );
-      }),
-      {
-        userId: user.id,
-      },
-    );
-  } else {
-    // ============================================================
-    // BA / DEVELOPER / QA
-    // Only issues currently assigned to me
-    // ============================================================
+      // B. OR issues currently assigned to me
+      qb.orWhere(
+        `EXISTS (
+           SELECT 1
+           FROM comments c2
+           WHERE c2.issue_id = issue.id
+             AND c2.assigned_to = :userId
+             AND c2.id = (
+               SELECT c3.id
+               FROM comments c3
+               WHERE c3.issue_id = issue.id
+                 AND c3.assigned_to IS NOT NULL
+               ORDER BY c3.created_at DESC
+               LIMIT 1
+             )
+         )`,
+      );
+    }),
+    {
+      userId: user.id,
+    },
+  );
 
-    queryBuilder.andWhere(
-      `EXISTS (
-        SELECT 1
-        FROM comments c
-        WHERE c.issue_id = issue.id
-          AND c.assigned_to = :userId
-          AND c.id = (
-            SELECT c2.id
-            FROM comments c2
-            WHERE c2.issue_id = issue.id
-              AND c2.assigned_to IS NOT NULL
-            ORDER BY c2.created_at DESC
-            LIMIT 1
-          )
-      )`,
-      {
-        userId: user.id,
-      },
-    );
-  }
+} else if (
+  user.designation === Designation.BA ||
+  user.designation === Designation.DEVS ||
+  user.designation === Designation.QA
+) {
 
+  // ============================================================
+  // BA / DEVELOPER / QA
+  // Only see issues currently assigned to me
+  // ============================================================
+
+  queryBuilder.andWhere(
+    `EXISTS (
+      SELECT 1
+      FROM comments c
+      WHERE c.issue_id = issue.id
+        AND c.assigned_to = :userId
+        AND c.id = (
+          SELECT c2.id
+          FROM comments c2
+          WHERE c2.issue_id = issue.id
+            AND c2.assigned_to IS NOT NULL
+          ORDER BY c2.created_at DESC
+          LIMIT 1
+        )
+    )`,
+    {
+      userId: user.id,
+    },
+  );
+
+} else {
+
+  // Other designations cannot see issues
+  queryBuilder.andWhere('1 = 0');
+}
   // ============================================================
   // 5. ONLY IN PROGRESS ISSUES
   // ============================================================
