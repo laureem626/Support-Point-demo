@@ -135,6 +135,25 @@ if (!assignedUser) {
     .orderBy('comment.createdAt', 'DESC')
     .getOne();
 
+   if (!lastAssignment) {
+  // Only Supporter can comment on an unassigned issue
+  if (currentUser.designation !== Designation.SUPPORTER) {
+    throw new ForbiddenException(
+      'You cannot comment because this issue is not assigned to you',
+    );
+  }
+} else {
+  // Issue is assigned, check whether current user is the assignee
+  if (
+    lastAssignment.assignedTo !== currentUser.id &&
+    currentUser.designation !== Designation.SUPPORTER
+  ) {
+    throw new ForbiddenException(
+      'You cannot comment because this issue is currently assigned to another user',
+    );
+  }
+}
+
  await this.validateAssignment(
     currentUser,
     assignedUser,
