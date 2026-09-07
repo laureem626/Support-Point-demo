@@ -383,263 +383,289 @@ export class IssuesService {
     };
   }
 
+
+
+private hasDesignation(
+  user: User,
+  designation: Designation,
+): boolean {
+  return (
+    user.designations?.some(
+      (userDesignation) =>
+        userDesignation.designation === designation,
+    ) ?? false
+  );
+}
+
+
   // ============================================================
   // VALIDATE ASSIGNMENT
   // ============================================================
 
-  private async validateAssignment(
-    currentUser: User,
-    assignedUser: User,
-    lastAssignment: Comment | null,
+
+private async validateAssignment(
+  currentUser: User,
+  assignedUser: User,
+  lastAssignment: Comment | null,
+) {
+  // ----------------------------------------------------------
+  // Check that current user has at least one designation
+  // ----------------------------------------------------------
+
+  if (
+    !currentUser.designations ||
+    currentUser.designations.length === 0
   ) {
-    const currentDesignation =
-      this.getDesignation(currentUser);
-
-    const assignedDesignation =
-      this.getDesignation(assignedUser);
-
-    // ----------------------------------------------------------
-    // Make sure designation exists
-    // ----------------------------------------------------------
-
-    if (!currentDesignation) {
-      throw new ForbiddenException(
-        'Current user has no designation',
-      );
-    }
-
-    if (!assignedDesignation) {
-      throw new BadRequestException(
-        'Assigned user has no designation',
-      );
-    }
-
-    // ----------------------------------------------------------
-    // Cannot assign to same person
-    // ----------------------------------------------------------
-
-    if (
-      lastAssignment &&
-      lastAssignment.assignedTo ===
-        assignedUser.id
-    ) {
-      throw new BadRequestException(
-        'This issue is already assigned to this user',
-      );
-    }
-
-    // ----------------------------------------------------------
-    // No previous assignment
-    // ----------------------------------------------------------
-
-    if (!lastAssignment) {
-      if (
-        currentDesignation ===
-          Designation.SUPPORTER &&
-        assignedDesignation ===
-          Designation.BA
-      ) {
-        return;
-      }
-
-      throw new BadRequestException(
-        `${currentDesignation} cannot assign this issue to ${assignedDesignation}.`,
-      );
-    }
-
-    // ----------------------------------------------------------
-    // Current assignee
-    // ----------------------------------------------------------
-
-    const currentAssigneeId =
-      lastAssignment.assignedTo;
-
-    if (
-      currentAssigneeId !==
-      currentUser.id
-    ) {
-      throw new BadRequestException(
-        'You cannot assign this issue because it is not currently assigned to you.',
-      );
-    }
-
-    // ----------------------------------------------------------
-    // Supporter received issue from QA
-    //
-    // QA -> SUPPORTER
-    // SUPPORTER cannot send it back to BA
-    // ----------------------------------------------------------
-
-    const lastAssignmentCreatedBy =
-      lastAssignment.createdBy;
-
-    const lastAssignmentCreatorDesignation =
-      lastAssignmentCreatedBy
-        ? this.getDesignation(
-            lastAssignmentCreatedBy,
-          )
-        : undefined;
-
-    if (
-      lastAssignmentCreatorDesignation ===
-        Designation.QA &&
-      currentDesignation ===
-        Designation.SUPPORTER &&
-      assignedDesignation ===
-        Designation.BA
-    ) {
-      throw new ForbiddenException(
-        'A Supporter cannot assign this issue to a BA after receiving it from QA',
-      );
-    }
-
-    // ----------------------------------------------------------
-    // SUPPORTER -> BA
-    // ----------------------------------------------------------
-
-    if (
-      currentDesignation ===
-        Designation.SUPPORTER &&
-      assignedDesignation ===
-        Designation.BA
-    ) {
-      return;
-    }
-
-    // ----------------------------------------------------------
-    // BA -> DEVELOPER
-    // ----------------------------------------------------------
-
-    if (
-      currentDesignation ===
-        Designation.BA &&
-      assignedDesignation ===
-        Designation.DEVS
-    ) {
-      return;
-    }
-
-    // ----------------------------------------------------------
-    // BA -> SUPPORTER
-    //
-    // Only if Supporter previously assigned
-    // this issue to this BA
-    // ----------------------------------------------------------
-
-    if (
-      currentDesignation ===
-        Designation.BA &&
-      assignedDesignation ===
-        Designation.SUPPORTER
-    ) {
-      const previousSupporterAssignment =
-        await this.commentRepository
-          .createQueryBuilder('comment')
-
-          .innerJoinAndSelect(
-            'comment.createdBy',
-            'creator',
-          )
-
-          .innerJoin(
-            'creator.designations',
-            'creatorDesignation',
-          )
-
-          .where(
-            'comment.issueId = :issueId',
-            {
-              issueId:
-                lastAssignment.issueId,
-            },
-          )
-
-          .andWhere(
-            'comment.assignedTo = :baId',
-            {
-              baId: currentUser.id,
-            },
-          )
-
-          .andWhere(
-            'creatorDesignation.designation = :designation',
-            {
-              designation:
-                Designation.SUPPORTER,
-            },
-          )
-
-          .getOne();
-
-      if (!previousSupporterAssignment) {
-        throw new BadRequestException(
-          'BA can only assign to a Supporter if a Supporter previously assigned this issue to the BA.',
-        );
-      }
-
-      return;
-    }
-
-    // ----------------------------------------------------------
-    // DEVELOPER -> QA
-    // ----------------------------------------------------------
-
-    if (
-      currentDesignation ===
-        Designation.DEVS &&
-      assignedDesignation ===
-        Designation.QA
-    ) {
-      return;
-    }
-
-    // ----------------------------------------------------------
-    // Developer cannot assign elsewhere
-    // ----------------------------------------------------------
-
-    if (
-      currentDesignation ===
-      Designation.DEVS
-    ) {
-      throw new BadRequestException(
-        'Developer can only assign an issue to QA.',
-      );
-    }
-
-    // ----------------------------------------------------------
-    // QA -> DEVELOPER
-    // ----------------------------------------------------------
-
-    if (
-      currentDesignation ===
-        Designation.QA &&
-      assignedDesignation ===
-        Designation.DEVS
-    ) {
-      return;
-    }
-
-    // ----------------------------------------------------------
-    // QA -> SUPPORTER
-    // ----------------------------------------------------------
-
-    if (
-      currentDesignation ===
-        Designation.QA &&
-      assignedDesignation ===
-        Designation.SUPPORTER
-    ) {
-      return;
-    }
-
-    // ----------------------------------------------------------
-    // Everything else forbidden
-    // ----------------------------------------------------------
-
-    throw new BadRequestException(
-      `${currentDesignation} cannot assign this issue to ${assignedDesignation}.`,
+    throw new ForbiddenException(
+      'Current user has no designation',
     );
   }
+
+  // ----------------------------------------------------------
+  // Check that assigned user has at least one designation
+  // ----------------------------------------------------------
+
+  if (
+    !assignedUser.designations ||
+    assignedUser.designations.length === 0
+  ) {
+    throw new BadRequestException(
+      'Assigned user has no designation',
+    );
+  }
+
+  // ----------------------------------------------------------
+  // Helper
+  // ----------------------------------------------------------
+
+  const currentHas = (designation: Designation) =>
+    this.hasDesignation(currentUser, designation);
+
+  const assignedHas = (designation: Designation) =>
+    this.hasDesignation(assignedUser, designation);
+
+  // ----------------------------------------------------------
+  // Cannot assign to same person
+  // ----------------------------------------------------------
+
+  if (
+    lastAssignment &&
+    lastAssignment.assignedTo === assignedUser.id
+  ) {
+    throw new BadRequestException(
+      'This issue is already assigned to this user',
+    );
+  }
+
+  // ----------------------------------------------------------
+  // No previous assignment
+  //
+  // SUPPORTER -> BA
+  // ----------------------------------------------------------
+
+  if (!lastAssignment) {
+    if (
+      currentHas(Designation.SUPPORTER) &&
+      assignedHas(Designation.BA)
+    ) {
+      return;
+    }
+
+    throw new BadRequestException(
+      'You are not allowed to assign this issue to this user.',
+    );
+  }
+
+  // ----------------------------------------------------------
+  // Current assignee
+  // ----------------------------------------------------------
+
+  const currentAssigneeId =
+    lastAssignment.assignedTo;
+
+  if (
+    currentAssigneeId !== currentUser.id
+  ) {
+    throw new BadRequestException(
+      'You cannot assign this issue because it is not currently assigned to you.',
+    );
+  }
+
+  // ----------------------------------------------------------
+  // Get designations of the person who made
+  // the previous assignment
+  // ----------------------------------------------------------
+
+  const lastAssignmentCreatedBy =
+    lastAssignment.createdBy;
+
+  const lastCreatorIsQA =
+    lastAssignmentCreatedBy
+      ? this.hasDesignation(
+          lastAssignmentCreatedBy,
+          Designation.QA,
+        )
+      : false;
+
+  // ----------------------------------------------------------
+  // QA -> SUPPORTER
+  //
+  // If QA assigned the issue to a Supporter,
+  // that Supporter cannot send it back to BA.
+  // ----------------------------------------------------------
+
+  if (
+    lastCreatorIsQA &&
+    currentHas(Designation.SUPPORTER) &&
+    assignedHas(Designation.BA)
+  ) {
+    throw new ForbiddenException(
+      'A Supporter cannot assign this issue to a BA after receiving it from QA.',
+    );
+  }
+
+  // ----------------------------------------------------------
+  // SUPPORTER -> BA
+  //
+  // IMPORTANT:
+  // The assigned user may ALSO have QA, DEVELOPER,
+  // SUPPORTER, etc. As long as they have BA,
+  // this assignment is allowed.
+  // ----------------------------------------------------------
+
+  if (
+    currentHas(Designation.SUPPORTER) &&
+    assignedHas(Designation.BA)
+  ) {
+    return;
+  }
+
+  // ----------------------------------------------------------
+  // BA -> DEVELOPER
+  //
+  // Assigned user may have multiple designations.
+  // We only care that they HAVE DEVS.
+  // ----------------------------------------------------------
+
+  if (
+    currentHas(Designation.BA) &&
+    assignedHas(Designation.DEVS)
+  ) {
+    return;
+  }
+
+  // ----------------------------------------------------------
+  // BA -> SUPPORTER
+  //
+  // Only if a Supporter previously assigned
+  // this issue to this BA.
+  // ----------------------------------------------------------
+
+  if (
+    currentHas(Designation.BA) &&
+    assignedHas(Designation.SUPPORTER)
+  ) {
+    const previousSupporterAssignment =
+      await this.commentRepository
+        .createQueryBuilder('comment')
+
+        .innerJoinAndSelect(
+          'comment.createdBy',
+          'creator',
+        )
+
+        .innerJoin(
+          'creator.designations',
+          'creatorDesignation',
+        )
+
+        .where(
+          'comment.issueId = :issueId',
+          {
+            issueId: lastAssignment.issueId,
+          },
+        )
+
+        .andWhere(
+          'comment.assignedTo = :baId',
+          {
+            baId: currentUser.id,
+          },
+        )
+
+        .andWhere(
+          'creatorDesignation.designation = :designation',
+          {
+            designation:
+              Designation.SUPPORTER,
+          },
+        )
+
+        .getOne();
+
+    if (!previousSupporterAssignment) {
+      throw new BadRequestException(
+        'BA can only assign to a Supporter if a Supporter previously assigned this issue to the BA.',
+      );
+    }
+
+    return;
+  }
+
+  // ----------------------------------------------------------
+  // DEVELOPER -> QA
+  // ----------------------------------------------------------
+
+  if (
+    currentHas(Designation.DEVS) &&
+    assignedHas(Designation.QA)
+  ) {
+    return;
+  }
+
+  // ----------------------------------------------------------
+  // Developer cannot assign elsewhere
+  // ----------------------------------------------------------
+
+  if (
+    currentHas(Designation.DEVS)
+  ) {
+    throw new BadRequestException(
+      'Developer can only assign an issue to QA.',
+    );
+  }
+
+  // ----------------------------------------------------------
+  // QA -> DEVELOPER
+  // ----------------------------------------------------------
+
+  if (
+    currentHas(Designation.QA) &&
+    assignedHas(Designation.DEVS)
+  ) {
+    return;
+  }
+
+  // ----------------------------------------------------------
+  // QA -> SUPPORTER
+  // ----------------------------------------------------------
+
+  if (
+    currentHas(Designation.QA) &&
+    assignedHas(Designation.SUPPORTER)
+  ) {
+    return;
+  }
+
+  // ----------------------------------------------------------
+  // Everything else forbidden
+  // ----------------------------------------------------------
+
+  throw new BadRequestException(
+    'You are not allowed to assign this issue to the selected user.',
+  );
+}
+
 
   // ============================================================
   // GET ALL ISSUES
