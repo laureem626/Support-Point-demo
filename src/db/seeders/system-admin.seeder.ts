@@ -6,7 +6,7 @@ import { Designation } from 'src/common/enums/issue.enum';
 export const seedSystemAdmin = async (dataSource: DataSource) => {
   const userRepository = dataSource.getRepository(User);
 
-  const adminMobile = '255748031817';
+  const adminMobile = '255784082951';
   const existingAdmin = await userRepository.findOne({
     where: { mobile: adminMobile },
   });
