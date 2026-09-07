@@ -1,32 +1,93 @@
 import { DataSource } from 'typeorm';
-import { User } from '../../modules/users/entities/user.entity';
-import { hashPassword } from '../../common/utils/password-hash';
-import { Designation } from 'src/common/enums/issue.enum';
 
-export const seedSystemAdmin = async (dataSource: DataSource) => {
-  const userRepository = dataSource.getRepository(User);
+import { User } from '../../modules/users/entities/user.entity';
+import { Designation as DesignationEntity } from '../../modules/users/entities/designation.entity';
+
+import { hashPassword } from '../../common/utils/password-hash';
+
+import {
+  Designation,
+} from 'src/common/enums/issue.enum';
+
+export const seedSystemAdmin = async (
+  dataSource: DataSource,
+) => {
+  const userRepository =
+    dataSource.getRepository(User);
+
+  const designationRepository =
+    dataSource.getRepository(DesignationEntity);
 
   const adminMobile = '255784082951';
-  const existingAdmin = await userRepository.findOne({
-    where: { mobile: adminMobile },
+
+  // Find existing System Admin
+  let adminUser = await userRepository.findOne({
+    where: {
+      mobile: adminMobile,
+    },
   });
 
-  if (existingAdmin) {
-    console.log('⚠️ System admin already exists');
-    return;
+  // ==========================================
+  // CREATE SYSTEM ADMIN USER IF NOT EXISTS
+  // ==========================================
+  if (!adminUser) {
+    const hashedPassword =
+      await hashPassword('123456');
+
+    const newAdmin = userRepository.create({
+      firstName: 'System',
+      lastName: 'Administrator',
+      mobile: adminMobile,
+      isActive: true,
+      password: hashedPassword,
+    });
+
+    adminUser =
+      await userRepository.save(newAdmin);
+
+    console.log('Created System Admin User');
+  } else {
+    console.log(
+      'System admin already exists',
+    );
   }
 
-  const hashedPassword = await hashPassword('123456');
+  // ==========================================
+  // CHECK SYSTEM ADMIN DESIGNATION
+  // ==========================================
+  const existingDesignation =
+    await designationRepository.findOne({
+      where: {
+        userId: adminUser.id,
+        designation: Designation.SYSTEM_ADMIN,
+      },
+    });
 
-  const adminUser = userRepository.create({
-    firstName: 'System',
-    lastName: 'Administrator',
-    designation: Designation.SYSTEM_ADMIN,
-    mobile: adminMobile,
-    isActive: true,
-    password: hashedPassword,
-  });
+  // ==========================================
+  // CREATE DESIGNATION IF MISSING
+  // ==========================================
+  if (!existingDesignation) {
+    const adminDesignation =
+      designationRepository.create({
+        designation:
+          Designation.SYSTEM_ADMIN,
+        userId: adminUser.id,
+      });
 
-  await userRepository.save(adminUser);
-  console.log('✅ Seeded: System Admin User');
+    await designationRepository.save(
+      adminDesignation,
+    );
+
+    console.log(
+      'Assigned SYSTEM_ADMIN designation',
+    );
+  } else {
+    console.log(
+      'System Admin already has SYSTEM_ADMIN designation',
+    );
+  }
+
+  console.log(
+    'System Admin seeding completed',
+  );
 };

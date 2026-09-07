@@ -11,9 +11,11 @@ import { CreateProductDto } from '../dtos/create-product.dto';
 import { User } from '../../users/entities/user.entity';
 import { PaginationService } from '../../../common/pagination/pagination-service';
 import { ProductQueryDto } from '../dtos/product-query.dto';
-import { Designation } from 'src/modules/users/enums/users.enum';
 import { UpdateIssueStatusDto } from 'src/modules/issues/dto/update-issue.dto';
 import {UpdateProductDto} from "../dtos/update-productdto";
+import {
+  Designation as DesignationEnum,
+} from 'src/common/enums/issue.enum';
 @Injectable()
 export class ProductsService {
   constructor(
@@ -25,19 +27,25 @@ export class ProductsService {
   ) {}
 
   async create(createProductDto: CreateProductDto, userId: number) {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-    });
+   const user = await this.userRepository.findOne({
+  where: { id: userId },
+  relations: {
+    designations: true,
+  },
+});
 
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    if (user.designation !== Designation.SUPPORTER) {
-      throw new ForbiddenException(
-        'Only System Supporter can create a product',
-      );
-    }
+if (
+  user.designations?.[0]?.designation !==
+  DesignationEnum.SUPPORTER
+) {
+  throw new ForbiddenException(
+    'Only System Supporter can create a product',
+  );
+}
 
     const existingProduct = await this.productRepository.findOne({
       where: {
@@ -93,20 +101,24 @@ async update(
   }
 
   const user = await this.userRepository.findOne({
-    where: { id: userId },
-  });
-
+  where: { id: userId },
+  relations: {
+    designations: true,
+  },
+});
   if (!user) {
     throw new NotFoundException(
       `User with ID ${userId} not found`,
     );
   }
-
-  if (user.designation !== Designation.SUPPORTER) {
-    throw new ForbiddenException(
-      'Only System Supporter can update a product',
-    );
-  }
+if (
+  user.designations?.[0]?.designation !==
+  DesignationEnum.SUPPORTER
+) {
+  throw new ForbiddenException(
+    'Only System Supporter can update a product',
+  );
+}
 
   // Check duplicate product name only if name is being changed
   if (updateProductDto.name) {

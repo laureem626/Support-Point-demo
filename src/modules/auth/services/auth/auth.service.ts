@@ -3,11 +3,16 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
+
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+
 import * as bcrypt from 'bcrypt';
+
 import { JwtService } from '@nestjs/jwt';
+
 import { RefreshTokenDto } from '../../dtos/refresh-token/refresh-token.dto';
+
 import { User } from '../../../users/entities/user.entity';
 
 @Injectable()
@@ -15,40 +20,53 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+
     private readonly jwtService: JwtService,
   ) {}
 
   /**
-   * Validate user credentials (mobile & password).
-   * @param mobile - The user's mobile number.
-   * @param password - The user's password.
-   * @returns Partial user data if valid, otherwise throws an error.
+   * Validate user credentials.
    */
-  async validateUser(mobile: string, password: string): Promise<Partial<User>> {
+  async validateUser(
+    mobile: string,
+    password: string,
+  ): Promise<Partial<User>> {
     const user = await this.usersRepository.findOne({
-      where: { mobile },
+      where: {
+        mobile,
+      },
+
       select: {
         id: true,
         uuid: true,
         firstName: true,
         lastName: true,
-
         mobile: true,
-        designation: true,
         isActive: true,
         createdAt: true,
         password: true,
       },
+
+      relations: {
+        designations: true,
+      },
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException(
+        'Invalid credentials',
+      );
     }
 
-    const passwordValid = await bcrypt.compare(password, user.password);
+    const passwordValid = await bcrypt.compare(
+      password,
+      user.password,
+    );
 
     if (!passwordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException(
+        'Invalid credentials',
+      );
     }
 
     return {
@@ -59,35 +77,40 @@ export class AuthService {
       mobile: user.mobile,
       isActive: user.isActive,
       createdAt: user.createdAt,
-      designation: user.designation,
+
+      // Keep the designation relation available
+      designations: user.designations,
     };
   }
 
   /**
-   * Log in a user and generate authentication tokens.
-   * Handles verification, 2FA, and token generation.
-   *
-   * @param user - The validated user data.
-   * @returns An object containing the user data, access token, and refresh token (or OTP message if 2FA is enabled).
+   * Log in user and generate authentication tokens.
    */
   async login(user: Partial<User>) {
-    // const payload = { mobile: user.mobile, sub: user.uuid, id: user.id };
-    // OR Use this for getting authenticated user's profile with full details
     const payload = {
       id: user.id,
       uuid: user.uuid,
       firstName: user.firstName,
       lastName: user.lastName,
       mobile: user.mobile,
-      designation: user.designation,
+
+      // Get the actual designation value.
+      //
+      // Example:
+      // "SUPPORTER"
+      // "BA"
+      // "DEVS"
+      // "QA"
+      designation: user.designations,
+
       isActive: user.isActive,
     };
 
-    // Generate the access token
-    const accessToken = this.jwtService.sign(payload);
+    const accessToken =
+      this.jwtService.sign(payload);
 
-    // Generate refresh token (With longer expiration time)
-    const refreshToken = this.generateRefreshToken(payload);
+    const refreshToken =
+      this.generateRefreshToken(payload);
 
     return {
       user,
@@ -97,58 +120,84 @@ export class AuthService {
   }
 
   /**
-   * Generate a refresh token with a longer expiration period.
-   * @param payload - The token payload (user data).
-   * @returns A signed refresh token.
+   * Generate refresh token.
    */
-  private generateRefreshToken(payload: any): string {
+  private generateRefreshToken(
+    payload: any,
+  ): string {
     return this.jwtService.sign(payload, {
       expiresIn: '14d',
-      secret: process.env.JWT_REFRESH_SECRET_KEY,
+      secret:
+        process.env.JWT_REFRESH_SECRET_KEY,
     });
   }
 
   /**
-   * Refresh authentication tokens using a valid refresh token.
-   * @param refreshTokenDto - DTO containing the refresh token.
-   * @returns New access and refresh tokens if valid, otherwise throws an error.
+   * Refresh authentication tokens.
    */
-  async refresh(refreshTokenDto: RefreshTokenDto) {
+  async refresh(
+    refreshTokenDto: RefreshTokenDto,
+  ) {
     try {
-      const { refreshToken } = refreshTokenDto;
+      const { refreshToken } =
+        refreshTokenDto;
 
-      // Verify the submitted refresh token
-      const verifiedPayload = this.jwtService.verify(refreshToken, {
-        secret: process.env.JWT_REFRESH_SECRET_KEY,
-      });
+      const verifiedPayload =
+        this.jwtService.verify(refreshToken, {
+          secret:
+            process.env.JWT_REFRESH_SECRET_KEY,
+        });
 
-      // Generate new access token
       const payload = {
-        mobile: verifiedPayload.mobile,
-        sub: verifiedPayload.sub,
         id: verifiedPayload.id,
-      };
-      const newAccessToken = this.jwtService.sign(payload);
+        uuid: verifiedPayload.uuid,
+        firstName:
+          verifiedPayload.firstName,
+        lastName:
+          verifiedPayload.lastName,
+        mobile: verifiedPayload.mobile,
 
-      // Regenerate the existing refresh token
-      const regeneratedRefreshToken = this.generateRefreshToken(payload);
+        // Keep designation as a single value
+        designation:
+          verifiedPayload.designation,
+
+        isActive:
+          verifiedPayload.isActive,
+      };
+
+      const newAccessToken =
+        this.jwtService.sign(payload);
+
+      const regeneratedRefreshToken =
+        this.generateRefreshToken(payload);
 
       return {
         accessToken: newAccessToken,
-        refreshToken: regeneratedRefreshToken,
+        refreshToken:
+          regeneratedRefreshToken,
       };
     } catch (error) {
-      if (error.name === 'TokenExpiredError') {
+      if (
+        error?.name ===
+        'TokenExpiredError'
+      ) {
         throw new UnauthorizedException(
           'Refresh token expired. Please log in again.',
         );
-      } else if (error.name === 'JsonWebTokenError') {
-        throw new UnauthorizedException('Invalid refresh token.');
-      } else {
-        throw new InternalServerErrorException(
-          'An error occurred while verifying the token.',
+      }
+
+      if (
+        error?.name ===
+        'JsonWebTokenError'
+      ) {
+        throw new UnauthorizedException(
+          'Invalid refresh token.',
         );
       }
+
+      throw new InternalServerErrorException(
+        'An error occurred while verifying the token.',
+      );
     }
   }
 }

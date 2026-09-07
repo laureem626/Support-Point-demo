@@ -1,9 +1,10 @@
-import { Designation } from 'src/common/enums/issue.enum';
+import { Designation } from './designation.entity';
 import {
   Column,
   CreateDateColumn,
   Entity,
   Generated,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -23,11 +24,6 @@ export class User {
   @Column({ type: 'varchar', length: 20, nullable: false, unique: false })
   lastName: string;
 
-  @Column({
-    type: 'enum',
-    enum: Designation, nullable: false,
-  })
-  designation: Designation;
 
   @Column({ type: 'varchar', unique: true, length: 12, nullable: false })
   mobile: string;
@@ -37,6 +33,12 @@ export class User {
 
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
+
+   @OneToMany(
+    () => Designation,
+    (designation) => designation.user,
+  )
+  designations: Designation[];
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;

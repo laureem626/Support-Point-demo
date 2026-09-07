@@ -1,17 +1,37 @@
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { PassportStrategy } from '@nestjs/passport';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import {
+  ExtractJwt,
+  Strategy,
+} from 'passport-jwt';
+
+import {
+  PassportStrategy,
+} from '@nestjs/passport';
+
+import {
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+
+import {
+  InjectRepository,
+} from '@nestjs/typeorm';
+
+import {
+  Repository,
+} from 'typeorm';
+
 import { User } from '../../users/entities/user.entity';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class JwtStrategy extends PassportStrategy(
+  Strategy,
+) {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
   ) {
-    const secret = process.env.JWT_ACCESS_SECRET_KEY;
+    const secret =
+      process.env.JWT_ACCESS_SECRET_KEY;
 
     if (!secret) {
       throw new Error(
@@ -20,23 +40,37 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest:
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+
       ignoreExpiration: false,
+
       secretOrKey: secret,
     });
   }
 
   async validate(payload: any) {
-    const user = await this.usersRepository.findOne({
-      where: { id: payload.id },
-    });
+    const user =
+      await this.usersRepository.findOne({
+        where: {
+          id: payload.id,
+        },
+
+        relations: {
+          designations: true,
+        },
+      });
 
     if (!user) {
-      throw new UnauthorizedException('User no longer exists');
+      throw new UnauthorizedException(
+        'User no longer exists',
+      );
     }
 
     if (!user.isActive) {
-      throw new UnauthorizedException('User is inactive');
+      throw new UnauthorizedException(
+        'User is inactive',
+      );
     }
 
     return {
@@ -45,7 +79,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       firstName: user.firstName,
       lastName: user.lastName,
       mobile: user.mobile,
-      designation: user.designation,
+
+      // Get designation from the Designation entity
+      designation:
+        user.designations,
+
       isActive: user.isActive,
     };
   }

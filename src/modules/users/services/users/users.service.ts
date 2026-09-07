@@ -8,50 +8,90 @@ import { UserQueryDto } from '../../dtos/user-query.dto';
 import { PaginationOptionsDto } from '../../../../common/pagination/dto/pagination-options.dto';
 import { validateAndSort } from '../../../../common/utils/sort-queryset';
 import { PaginationService } from '../../../../common/pagination/pagination-service';
+import { Designation } from '../../entities/designation.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+
+    @InjectRepository(Designation)
+    private readonly designationRepository: Repository<Designation>,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<{ user: User }> {
-    //Hash the user's password
-    const hashedPassword = await hashPassword(createUserDto.password);
+    const { password, designations, ...userData } = createUserDto;
 
-    // Create a new user entity with hashed password and profile image path
+    const hashedPassword = await hashPassword(password);
+
+    // Create user
     const user = this.usersRepository.create({
-      ...createUserDto,
+      ...userData,
       password: hashedPassword,
     });
 
-    // Save the user entity to the database
+    // Save user first so we get the user ID
     const savedUser = await this.usersRepository.save(user);
 
-    // Remove password from the response without mutating the entity
-    // const { password, ...userWithoutPassword } = savedUser;
+    // Create designation records
+    if (designations && designations.length > 0) {
+      const designationEntities = designations.map((designation) =>
+        this.designationRepository.create({
+          designation,
+          userId: savedUser.id,
+        }),
+      );
+
+      await this.designationRepository.save(designationEntities);
+    }
+
+    // Load user together with designations
+    const userWithDesignations = await this.usersRepository.findOne({
+      where: {
+        id: savedUser.id,
+      },
+      relations: {
+        designations: true,
+      },
+    });
+
+    if (!userWithDesignations) {
+      throw new NotFoundException('User could not be found');
+    }
 
     return {
-      user: savedUser,
+      user: userWithDesignations,
     };
   }
 
-  async findAll(query: UserQueryDto, paginationOptsDto: PaginationOptionsDto) {
-    const { search, orderBy, sortOrder, isActive, designation } = query;
+  async findAll(
+    query: UserQueryDto,
+    paginationOptsDto: PaginationOptionsDto,
+  ) {
+    const {
+      search,
+      orderBy,
+      sortOrder,
+      isActive,
+      designation,
+    } = query;
 
     const queryBuilder = this.usersRepository
       .createQueryBuilder('user')
+      .leftJoinAndSelect('user.designations', 'designation')
       .select([
         'user.id',
         'user.uuid',
         'user.firstName',
         'user.lastName',
         'user.mobile',
-        'user.designation',
         'user.isActive',
         'user.createdAt',
         'user.updatedAt',
+        'designation.id',
+        'designation.uuid',
+        'designation.designation',
       ]);
 
     // Filter based on active/not active
@@ -63,9 +103,12 @@ export class UsersService {
 
     // Filter by designation
     if (designation) {
-      queryBuilder.andWhere('user.designation = :designation', {
-        designation,
-      });
+      queryBuilder.andWhere(
+        'designation.designation = :designation',
+        {
+          designation,
+        },
+      );
     }
 
     // Searching
@@ -76,37 +119,50 @@ export class UsersService {
           user.lastName ILIKE :search OR
           user.mobile ILIKE :search
         )`,
-        { search: `%${search}%` },
+        {
+          search: `%${search}%`,
+        },
       );
     }
 
-    const userExists = await queryBuilder.getOne();
-    if (!userExists) {
-      throw new NotFoundException('User does not exist');
-    }
-
-    //Sorting
+    // Sorting
     await validateAndSort(
       queryBuilder,
       orderBy ?? 'id',
       sortOrder ?? 'ASC',
       'user',
-      ['id', 'firstName', 'lastName', 'mobile', 'designation'],
+      [
+        'id',
+        'firstName',
+        'lastName',
+        'mobile',
+      ],
     );
 
-    return PaginationService.paginate(queryBuilder, paginationOptsDto);
+    return PaginationService.paginate(
+      queryBuilder,
+      paginationOptsDto,
+    );
   }
 
   async findOne(uuid: string): Promise<User> {
-    const user = await this.usersRepository.findOne({
-      where: { uuid },
-    });
+    const userWithDesignations =
+      await this.usersRepository.findOne({
+        where: {
+          uuid,
+        },
+        relations: {
+          designations: true,
+        },
+      });
 
-    if (!user) {
-      throw new NotFoundException(`User not found`);
+    if (!userWithDesignations) {
+      throw new NotFoundException(
+        `User with UUID ${uuid} not found`,
+      );
     }
 
-    return user;
+    return userWithDesignations;
   }
 
   // async getUserProfile(uuid: string): Promise<User> {

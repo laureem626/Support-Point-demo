@@ -2,6 +2,7 @@ import { IsUnique } from '../../../common/validators/is-unique.validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Designation } from 'src/common/enums/issue.enum';
 import {
+  IsArray,
   IsEnum,
   
   IsNotEmpty,
@@ -23,11 +24,17 @@ export class CreateUserDto {
   @Length(2, 20)
   lastName: string;
 
-  @ApiProperty({ enum: Designation, })
-  @IsEnum(Designation)
-  @IsNotEmpty()
-  @Length(2, 20)
-  designation: Designation;
+  @ApiProperty({
+  enum: Designation,
+  isArray: true,
+  example: [
+    Designation.SUPPORTER,
+    Designation.QA,
+  ],
+})
+@IsArray()
+@IsEnum(Designation, { each: true })
+designations: Designation[];
 
   @ApiProperty({ example: '987654321012' })
   @IsString()
