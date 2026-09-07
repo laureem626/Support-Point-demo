@@ -38,13 +38,16 @@ export class ProductsService {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-if (
-  user.designations?.[0]?.designation !==
-  DesignationEnum.SUPPORTER
-) {
+const isSupporter = user.designations?.some(
+  (designation) =>
+    designation.designation === DesignationEnum.SUPPORTER,
+);
+
+if (!isSupporter) {
   throw new ForbiddenException(
     'Only System Supporter can create a product',
   );
+
 }
 
     const existingProduct = await this.productRepository.findOne({

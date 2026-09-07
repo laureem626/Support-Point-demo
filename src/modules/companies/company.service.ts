@@ -26,6 +26,9 @@ import { CompanyQueryDto } from './dtos/company-query.dto';
 import {
   Designation,
 } from 'src/common/enums/issue.enum';
+import {
+  Designation as DesignationEnum,
+} from 'src/common/enums/issue.enum';
 
 @Injectable()
 export class CompaniesService {
@@ -190,13 +193,16 @@ export class CompaniesService {
     /**
      * Only System Supporter can update company.
      */
-    if (
-      user.designations?.[0]?.designation !==
-      Designation.SUPPORTER
-    ) {
-      throw new ForbiddenException(
-        'Only System Supporter can update a company',
-      );
+    const isSupporter = user.designations?.some(
+  (designation) =>
+    designation.designation === DesignationEnum.SUPPORTER,
+);
+
+if (!isSupporter) {
+  throw new ForbiddenException(
+    'Only System Supporter can create a product',
+  );
+
     }
 
     /**
