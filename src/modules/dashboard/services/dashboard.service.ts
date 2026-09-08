@@ -19,37 +19,52 @@ export class DashboardService {
 
   async getDashboardStats(): Promise<DashboardResponseDto> {
     const [
-      userCount,
-      productCount,
-      companyCount,
-      criticalInProgress,
-      highInProgress,
-      mediumInProgress,
-      lowInProgress,
-      closedCount,
+      numberOfUsers,
+      numberOfProducts,
+      numberOfCompanies,
+      critical,
+      high,
+      medium,
+      low,
+      closed,
     ] = await Promise.all([
-      this.getUserCount(),
-      this.getProductCount(),
-      this.getCompanyCount(),
-      this.getIssueCount(IssueStatus.IN_PROGRESS, IssuePriority.CRITICAL),
-      this.getIssueCount(IssueStatus.IN_PROGRESS, IssuePriority.HIGH),
-      this.getIssueCount(IssueStatus.IN_PROGRESS, IssuePriority.MEDIUM),
-      this.getIssueCount(IssueStatus.IN_PROGRESS, IssuePriority.LOW),
-      this.getIssueCount(IssueStatus.CLOSED),
+      // 1. Active entity counts
+      this.userRepository.count({ where: { isActive: true } }),
+      this.productRepository.count({ where: { isActive: true } }),
+      this.companyRepository.count({ where: { isActive: true } }),
+
+      // 2. In-Progress issues by priority
+      this.issueRepository.count({
+        where: { status: IssueStatus.IN_PROGRESS, priority: IssuePriority.CRITICAL },
+      }),
+      this.issueRepository.count({
+        where: { status: IssueStatus.IN_PROGRESS, priority: IssuePriority.HIGH },
+      }),
+      this.issueRepository.count({
+        where: { status: IssueStatus.IN_PROGRESS, priority: IssuePriority.MEDIUM },
+      }),
+      this.issueRepository.count({
+        where: { status: IssueStatus.IN_PROGRESS, priority: IssuePriority.LOW },
+      }),
+
+      // 3. Closed issues count
+      this.issueRepository.count({
+        where: { status: IssueStatus.CLOSED },
+      }),
     ]);
 
     return {
-      numberOfUsers: userCount,
-      numberOfProducts: productCount,
-      numberOfCompanies: companyCount,
+      numberOfUsers,
+      numberOfProducts,
+      numberOfCompanies,
       issues: {
         inProgress: {
-          critical: criticalInProgress,
-          high: highInProgress,
-          medium: mediumInProgress,
-          low: lowInProgress,
+          critical,
+          high,
+          medium,
+          low,
         },
-        closed: closedCount,
+        closed,
       },
     };
   }

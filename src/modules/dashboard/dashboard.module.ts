@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DashboardController } from './controllers/dashboard.controller';
 import { DashboardService } from './services/dashboard.service';
-
 import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
 import { Product } from '../products/entities/product.entity';

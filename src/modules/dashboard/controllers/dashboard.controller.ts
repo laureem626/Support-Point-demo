@@ -3,15 +3,15 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { DashboardService } from '../services/dashboard.service';
 import { DashboardResponseDto } from '../dtos/dashboard-response.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-@ApiTags('Dashboard')
 
-@Controller('dashboard')
+@Controller('api/dashboard')
+@ApiTags('Dashboard')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
-  @Get()
+  @Get('stats')
   @ApiOperation({ summary: 'Get dashboard summary stats' })
   @ApiResponse({
     status: 200,

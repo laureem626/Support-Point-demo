@@ -35,6 +35,7 @@ async function bootstrap() {
     .setDescription('API documentation for  QELA SUPPORT ')
     .setVersion('1.0')
     .addTag('Auth')
+    .addTag('Dashboard')
     .addTag('Users')
     .addTag('Products')
     .addTag('Companies')
