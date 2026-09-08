@@ -12,6 +12,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ProductsModule } from './modules/products/products.module';
 import { CompaniesModule } from './modules/companies/companies.modules';
 import { IssuesModule } from './modules/issues/issues.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { IssuesModule } from './modules/issues/issues.module';
     ProductsModule,
     CompaniesModule,
     IssuesModule,
+    DashboardModule,
 
   ],
 

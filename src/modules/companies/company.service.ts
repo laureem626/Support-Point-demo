@@ -401,9 +401,9 @@ if (!isSupporter) {
      * can be used.
      */
     const sortOrder =
-      query.sortOrder === 'ASC'
-        ? 'ASC'
-        : 'DESC';
+      query.sortOrder === 'DESC'
+        ? 'DESC'
+        : 'ASC';
 
     // Sorting.
     queryBuilder.orderBy(

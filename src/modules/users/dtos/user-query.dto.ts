@@ -57,12 +57,12 @@ export class UserQueryDto {
   @ApiPropertyOptional({
     description: 'Sort order',
     enum: SortOrder,
-    example: SortOrder.DESC,
-    default: SortOrder.DESC,
+    example: SortOrder.ASC,
+    default: SortOrder.ASC,
   })
   @IsOptional()
   @IsEnum(SortOrder)
-  sortOrder?: SortOrder = SortOrder.DESC;
+  sortOrder?: SortOrder = SortOrder.ASC;
 
   @ApiPropertyOptional({
     enum: Designation,

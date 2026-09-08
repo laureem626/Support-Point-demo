@@ -221,7 +221,7 @@ if (
       : 'createdAt';
 
     // Sorting
-    queryBuilder.orderBy(`product.${orderBy}`, query.sortOrder ?? 'DESC');
+    queryBuilder.orderBy(`product.${orderBy}`, query.sortOrder ?? 'ASC');
 
     // Pagination
     return PaginationService.paginate(queryBuilder, query);
