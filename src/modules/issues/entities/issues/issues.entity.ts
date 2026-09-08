@@ -70,7 +70,7 @@ export class Issue {
   // })
   // assignedTo: AssignedTo;
 
-  @Column({ type: 'varchar', length: 100, nullable: false })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   title: string;
 
   @Column({ type: 'text' })
