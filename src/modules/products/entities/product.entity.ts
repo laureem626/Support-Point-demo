@@ -28,6 +28,9 @@ export class Product {
   @Column({ type: 'varchar', unique: true })
   name: string;
 
+  @Column({ type: 'boolean', default: true })
+  isActive: boolean;
+
   @Expose()
   get number(): string {
     return `PR-${String(this.id).padStart(4, '0')}`;

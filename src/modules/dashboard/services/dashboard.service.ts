@@ -6,6 +6,7 @@ import { Product } from '../../products/entities/product.entity';
 import { Company } from '../../companies/entities/company.entity';
 import { Issue } from '../../issues/entities/issues/issues.entity';
 import { DashboardResponseDto } from '../dtos/dashboard-response.dto';
+import { IssuePriority, IssueStatus } from 'src/common/enums/issue.enum';
 
 @Injectable()
 export class DashboardService {
@@ -13,11 +14,10 @@ export class DashboardService {
     @InjectRepository(User) private readonly userRepository: Repository<User>,
     @InjectRepository(Product) private readonly productRepository: Repository<Product>,
     @InjectRepository(Company) private readonly companyRepository: Repository<Company>,
-    @InjectRepository(Issue) private readonly issueRepository: Repository<Issue>
+    @InjectRepository(Issue) private readonly issueRepository: Repository<Issue>,
   ) {}
 
   async getDashboardStats(): Promise<DashboardResponseDto> {
-
     const [
       userCount,
       productCount,
@@ -31,22 +31,22 @@ export class DashboardService {
       this.getUserCount(),
       this.getProductCount(),
       this.getCompanyCount(),
-      this.getIssueCount('IN_PROGRESS', 'CRITICAL'),
-      this.getIssueCount('IN_PROGRESS', 'HIGH'),
-      this.getIssueCount('IN_PROGRESS', 'MEDIUM'),
-      this.getIssueCount('IN_PROGRESS', 'LOW'),
-      this.getIssueCount('CLOSED'),
+      this.getIssueCount(IssueStatus.IN_PROGRESS, IssuePriority.CRITICAL),
+      this.getIssueCount(IssueStatus.IN_PROGRESS, IssuePriority.HIGH),
+      this.getIssueCount(IssueStatus.IN_PROGRESS, IssuePriority.MEDIUM),
+      this.getIssueCount(IssueStatus.IN_PROGRESS, IssuePriority.LOW),
+      this.getIssueCount(IssueStatus.CLOSED),
     ]);
 
     return {
-      'number of users': userCount,
-      'number of products': productCount,
-      'number of companie': companyCount,
+      numberOfUsers: userCount,
+      numberOfProducts: productCount,
+      numberOfCompanies: companyCount,
       issues: {
-        'in-progress': {
+        inProgress: {
           critical: criticalInProgress,
-            high: highInProgress,
-            medium: mediumInProgress,
+          high: highInProgress,
+          medium: mediumInProgress,
           low: lowInProgress,
         },
         closed: closedCount,
@@ -54,9 +54,27 @@ export class DashboardService {
     };
   }
 
-  // Example placeholder query methods
-  private async getUserCount(): Promise<number> { return 120; }
-  private async getProductCount(): Promise<number> { return 50; }
-  private async getCompanyCount(): Promise<number> { return 8; }
-  private async getIssueCount(status: string, priority?: string): Promise<number> { return 5; }
+  private async getUserCount(): Promise<number> { 
+    return this.userRepository.count({
+      where: { isActive: true },
+    });
+  }
+
+  private async getProductCount(): Promise<number> {
+    return this.productRepository.count({
+      where: { isActive: true },
+    }); 
+  }
+
+  private async getCompanyCount(): Promise<number> { 
+    return this.companyRepository.count({
+      where: { isActive: true },
+    });
+  }
+
+  private async getIssueCount(status: IssueStatus, priority?: IssuePriority): Promise<number> { 
+    return this.issueRepository.count({
+      where: { status, priority },
+    });
+  }
 }

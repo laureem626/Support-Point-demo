@@ -24,6 +24,9 @@ export class Company {
   @Column({ type: 'varchar', unique: true })
   name: string;
 
+  @Column({ type: 'boolean', default: true })
+  isActive: boolean;
+
   @Expose()
   get number(): string {
     return `COMP-${String(this.id).padStart(4, '0')}`;
