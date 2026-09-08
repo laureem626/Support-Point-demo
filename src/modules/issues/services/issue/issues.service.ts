@@ -750,41 +750,7 @@ private async validateAssignment(
     // 4. ACCESS CONTROL
     // ----------------------------------------------------------
 
-    const isSupporter = user.designations?.some(
-  (designation) =>
-    designation.designation === Designation.SUPPORTER,
-) ?? false;
-
-const isSystemAdmin = user.designations?.some(
-  (designation) =>
-    designation.designation === Designation.SYSTEM_ADMIN,
-) ?? false;
-
-if (isSupporter) {
-  // Supporter can see issues they created
-  queryBuilder.andWhere(
-    'issue.created_by = :userId',
-    {
-      userId: user.id,
-    },
-  );
-} else if (!isSystemAdmin) {
-  // Other users can see issues they assigned
-  queryBuilder.andWhere(
-    `EXISTS (
-      SELECT 1
-      FROM comments assignment
-      WHERE assignment.issue_id = issue.id
-        AND assignment.created_by = :userId
-        AND assignment.assigned_to IS NOT NULL
-        AND assignment.assigned_to != :userId
-    )`,
-    {
-      userId: user.id,
-    },
-  );
-}
-
+   
     // ----------------------------------------------------------
     // 5. SEARCH
     // ----------------------------------------------------------
@@ -1019,7 +985,7 @@ if (isSupporter) {
 
         .orderBy(
           'comment.createdAt',
-          'DESC',
+          'ASC',
         )
 
         .getOne();

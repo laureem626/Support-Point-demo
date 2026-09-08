@@ -87,7 +87,36 @@ export const seedSystemAdmin = async (
     );
   }
 
+  const existingDeveloper =
+    await designationRepository.findOne({
+      where: {
+        userId: adminUser.id,
+        designation:
+          Designation.DEVS,
+      },
+    });
+
+  if (!existingDeveloper) {
+    const developerDesignation =
+      designationRepository.create({
+        designation:
+          Designation.DEVS,
+        userId: adminUser.id,
+      });
+
+    await designationRepository.save(
+      developerDesignation,
+    );
+
+    console.log(
+      'Assigned DEVELOPER designation',
+    );
+  } else {
+    console.log(
+      'System Admin already has DEVELOPER designation',
+    );
+  
   console.log(
     'System Admin seeding completed',
   );
-};
+};}
