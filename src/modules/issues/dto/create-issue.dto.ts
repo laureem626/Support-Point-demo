@@ -1,11 +1,12 @@
-import { IssuePriority, IssueStatus } from '../../../common/enums/issue.enum';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IssuePriority } from '../../../common/enums/issue.enum';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEnum,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  MaxLength,
  
 } from 'class-validator';
 
@@ -18,11 +19,13 @@ export class CreateIssueDto {
 @ApiProperty({ example: 'Anneth Bujashi' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   reporterName!: string;
 
 @ApiProperty({ example: '071234567' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(12)
   reporterMobile!: string;
 
 @ApiProperty({ example: 'low', enum: IssuePriority })
