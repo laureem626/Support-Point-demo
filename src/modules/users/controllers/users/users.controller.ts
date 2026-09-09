@@ -4,7 +4,7 @@ import { User } from '../../entities/user.entity';
 import { Public } from '../../../../common/decorators/is-public-route.decorator';
 import { PaginationOptionsDto } from '../../../../common/pagination/dto/pagination-options.dto';
 import { UserQueryDto } from '../../dtos/user-query.dto';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { 
   Body, 
@@ -34,14 +34,17 @@ export class UsersController {
   @ApiBearerAuth()
  @UseGuards(JwtAuthGuard)
  @ApiOperation({ summary: 'Get all users' })
-   @ApiResponse({ status: 201, description: 'User retrieved successfully.' })
-  @Get()
-  async findAll(
-    @Query() paginationOptsDto: PaginationOptionsDto,
-    @Query() queryParamsDto: UserQueryDto,
-  ) {
-    return await this.usersService.findAll(queryParamsDto, paginationOptsDto);
-  }
+@ApiResponse({ status: 200, description: 'Users retrieved successfully.' })
+
+@Get()
+async findAll(
+  @Query() paginationOptsDto: PaginationOptionsDto,
+  @Query() queryParamsDto: UserQueryDto,
+) {
+  return await this.usersService.findAll(queryParamsDto, paginationOptsDto);
+}
+
+  
 
 // @ApiOperation({ summary: 'Get user profile' })
 //   @ApiResponse({ status: 201, description: 'User profile retrieved successfully.' })

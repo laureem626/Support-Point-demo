@@ -8,6 +8,7 @@ import {
   IsEnum,
   IsPositive,
   IsBoolean,
+  IsArray,
 } from 'class-validator';
 
 export enum SortOrder {
@@ -67,11 +68,20 @@ export class UserQueryDto {
   @ApiPropertyOptional({
     enum: Designation,
     enumName: 'Designation',
-    description: 'Filter users by designation',
+    isArray: true,
+    description: 'Filter users by one or multiple designations',
   })
   @IsOptional()
-  @IsEnum(Designation)
-  designation?: Designation;
+  @Transform(({ value }) => {
+    if (!value) return undefined;
+    if (typeof value === 'string') {
+      return value.split(',').map((item) => item.trim());
+    }
+    return Array.isArray(value) ? value : [value];
+  })
+  @IsArray()
+  @IsEnum(Designation, { each: true })
+  designation?: Designation[];
 
   @ApiPropertyOptional({
     description: 'Filter by active status',
@@ -84,7 +94,6 @@ export class UserQueryDto {
       if (typeof value === 'string') {
         return value.toLowerCase() === 'true';
       }
-
       return value;
     },
     { toClassOnly: true },

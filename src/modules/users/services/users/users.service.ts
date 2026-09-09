@@ -1,14 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from '../../entities/user.entity';
 import { Repository } from 'typeorm';
+import { User } from '../../entities/user.entity';
+import { Designation } from '../../entities/designation.entity';
 import { CreateUserDto } from '../../dtos/create-user.dto';
-import { hashPassword } from '../../../../common/utils/password-hash';
 import { UserQueryDto } from '../../dtos/user-query.dto';
 import { PaginationOptionsDto } from '../../../../common/pagination/dto/pagination-options.dto';
+import { hashPassword } from '../../../../common/utils/password-hash';
 import { validateAndSort } from '../../../../common/utils/sort-queryset';
 import { PaginationService } from '../../../../common/pagination/pagination-service';
-import { Designation } from '../../entities/designation.entity';
 
 @Injectable()
 export class UsersService {
@@ -69,13 +69,7 @@ export class UsersService {
     query: UserQueryDto,
     paginationOptsDto: PaginationOptionsDto,
   ) {
-    const {
-      search,
-      orderBy,
-      sortOrder,
-      isActive,
-      designation,
-    } = query;
+    const { search, orderBy, sortOrder, isActive, designation } = query;
 
     const queryBuilder = this.usersRepository
       .createQueryBuilder('user')
@@ -96,18 +90,24 @@ export class UsersService {
 
     // Filter based on active/not active
     if (isActive !== undefined) {
-      queryBuilder.where('user.isActive = :isActive', {
+      queryBuilder.andWhere('user.isActive = :isActive', {
         isActive,
       });
     }
 
     // Filter by designation
-    if (designation) {
+    if (designation && designation.length > 0) {
+      const designationList = Array.isArray(designation)
+        ? designation
+        : [designation];
+
       queryBuilder.andWhere(
-        'designation.designation = :designation',
-        {
-          designation,
-        },
+        `EXISTS (
+      SELECT 1 FROM "designations" d
+      WHERE d."userId" = "user"."id"
+      AND d."designation" IN (:...designationList)
+    )`,
+        { designationList },
       );
     }
 
@@ -131,12 +131,7 @@ export class UsersService {
       orderBy ?? 'id',
       sortOrder ?? 'ASC',
       'user',
-      [
-        'id',
-        'firstName',
-        'lastName',
-        'mobile',
-      ],
+      ['id', 'firstName', 'lastName', 'mobile'],
     );
 
     return PaginationService.paginate(
@@ -165,6 +160,16 @@ export class UsersService {
     return userWithDesignations;
   }
 
+  async getDistinctDesignations(): Promise<string[]> {
+    const results = await this.designationRepository
+      .createQueryBuilder('designation')
+      .select('DISTINCT designation.designation', 'designation')
+      .getRawMany();
+
+    return results.map((row) => row.designation);
+  }
+}
+
   // async getUserProfile(uuid: string): Promise<User> {
   //   const user = await this.usersRepository.findOne({
   //     where: { uuid },
@@ -176,4 +181,3 @@ export class UsersService {
 
   //   return user;
   // }
-}
