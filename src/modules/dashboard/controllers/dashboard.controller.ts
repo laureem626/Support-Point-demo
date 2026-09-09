@@ -1,9 +1,7 @@
 import { Controller, Get,UseGuards, } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { DashboardService } from '../services/dashboard.service';
-import { DashboardResponseDto } from '../dtos/dashboard-response.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-
 @Controller('api/dashboard')
 @ApiTags('Dashboard')
 @UseGuards(JwtAuthGuard)
@@ -16,9 +14,8 @@ export class DashboardController {
   @ApiResponse({
     status: 200,
     description: 'Dashboard metrics retrieved successfully.',
-    type: DashboardResponseDto,
   })
-  async getDashboard(): Promise<DashboardResponseDto> {
+  async getDashboardStats() {
     return this.dashboardService.getDashboardStats();
   }
 }

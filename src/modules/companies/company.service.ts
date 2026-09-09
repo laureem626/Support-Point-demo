@@ -1,35 +1,14 @@
-
-import {
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-
-import {
-  Not,
-  Repository,
-} from 'typeorm';
-
+import { Not, Repository } from 'typeorm';
 import { Company } from './entities/company.entity';
 import { CreateCompanyDto } from './dtos/create-company.dto';
 import { UpdateCompanyDto } from './dtos/update-company.dto';
-
 import { User } from '../users/entities/user.entity';
 import { Product } from '../products/entities/product.entity';
-
 import { PaginationService } from '../../common/pagination/pagination-service';
 import { CompanyQueryDto } from './dtos/company-query.dto';
-
-import {
-  Designation,
-} from 'src/common/enums/issue.enum';
-import {
-  Designation as DesignationEnum,
-} from 'src/common/enums/issue.enum';
-
+import {Designation} from 'src/common/enums/issue.enum';
 @Injectable()
 export class CompaniesService {
   constructor(
@@ -44,400 +23,171 @@ export class CompaniesService {
   ) {}
 
   // CREATE COMPANY
-  async create(
-    createCompanyDto: CreateCompanyDto,
-    user: User,
-  ): Promise<Company> {
-    /**
-     * Reload the user with designations.
-     *
-     * User.designations is a relation, so we need
-     * to explicitly load it before checking the role.
-     */
-    const currentUser =
-      await this.userRepository.findOne({
-        where: {
-          id: user.id,
-        },
-        relations: {
-          designations: true,
-        },
-      });
+  async create(createCompanyDto: CreateCompanyDto, user: User): Promise<Company> {
+    const currentUser = await this.userRepository.findOne({
+      where: { id: user.id },
+      relations: { designations: true },
+    });
 
     if (!currentUser) {
-      throw new NotFoundException(
-        `User with ID ${user.id} not found`,
-      );
+      throw new NotFoundException(`User with ID ${user.id} not found`);
     }
 
-    /**
-     * Check Supporter permission.
-     *
-     * designations is an array of Designation entities,
-     * therefore we access the actual enum value using:
-     *
-     * currentUser.designations[0].designation
-     */
-    if (
-      currentUser.designations?.[0]?.designation !==
-      Designation.SUPPORTER
-    ) {
-      throw new ForbiddenException(
-        'Only System Supporter can create a company',
-      );
+    // Safely check if user has the SUPPORTER designation
+    const isSupporter = currentUser.designations?.some(
+      (d) => d.designation === Designation.SUPPORTER,
+    );
+    
+    if (!isSupporter) {
+      throw new ForbiddenException('Only System Supporter can create a company');
     }
 
-    // Check Product first.
-    const product =
-      await this.productRepository.findOne({
-        where: {
-          id: createCompanyDto.productId,
-        },
-      });
+    const product = await this.productRepository.findOne({
+      where: { id: createCompanyDto.productId },
+    });
 
     if (!product) {
-      throw new NotFoundException(
-        `Product with ID ${createCompanyDto.productId} not found`,
-      );
+      throw new NotFoundException(`Product with ID ${createCompanyDto.productId} not found`);
     }
 
-    // Check if company already exists.
-    const existingCompany =
-      await this.companyRepository.findOne({
-        where: {
-          name: createCompanyDto.name,
-        },
-      });
+    const existingCompany = await this.companyRepository.findOne({
+      where: { name: createCompanyDto.name },
+    });
 
     if (existingCompany) {
-      throw new ConflictException(
-        `Company "${createCompanyDto.name}" already exists`,
-      );
+      throw new ConflictException(`Company "${createCompanyDto.name}" already exists`);
     }
 
-    // Create Company.
-    const newCompany =
-      this.companyRepository.create({
-        ...createCompanyDto,
-        product,
-        createdBy: currentUser,
-        updatedBy: currentUser,
-      });
+    const newCompany = this.companyRepository.create({
+      ...createCompanyDto,
+      product,
+      createdBy: currentUser,
+      updatedBy: currentUser,
+    });
 
-    const savedCompany =
-      await this.companyRepository.save(
-        newCompany,
-      );
+    const savedCompany = await this.companyRepository.save(newCompany);
 
-    // Get created Company with relations.
-    const company =
-      await this.companyRepository.findOne({
-        where: {
-          uuid: savedCompany.uuid,
-        },
-        relations: {
-          product: true,
-          createdBy: true,
-          updatedBy: true,
-        },
-      });
-
-    if (!company) {
-      throw new NotFoundException(
-        `Company with UUID ${savedCompany.uuid} not found`,
-      );
-    }
-
-    return company;
+    // Reuse findOne to return the newly created company with all relations
+    return this.findOne(savedCompany.uuid);
   }
 
   // UPDATE COMPANY
-  async update(
-    uuid: string,
-    updateCompanyDto: UpdateCompanyDto,
-    userId: number,
-  ) {
-    // Find company.
-    const company =
-      await this.companyRepository.findOne({
-        where: {
-          uuid,
-        },
-      });
+  async update(uuid: string, updateCompanyDto: UpdateCompanyDto, userId: number): Promise<Company> {
+    const company = await this.companyRepository.findOne({
+      where: { uuid },
+    });
 
     if (!company) {
-      throw new NotFoundException(
-        `Company with UUID ${uuid} not found`,
-      );
+      throw new NotFoundException(`Company with UUID ${uuid} not found`);
     }
 
-    /**
-     * Load user WITH designations.
-     */
-    const user =
-      await this.userRepository.findOne({
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: { designations: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    const isSupporter = user.designations?.some(
+      (d) => d.designation === Designation.SUPPORTER,
+    );
+
+    if (!isSupporter) {
+      throw new ForbiddenException('Only System Supporter can update a company');
+    }
+
+    // Check duplicate company name only if the name is being changed
+    if (updateCompanyDto.name && updateCompanyDto.name !== company.name) {
+      const existingCompany = await this.companyRepository.findOne({
         where: {
-          id: userId,
-        },
-        relations: {
-          designations: true,
+          name: updateCompanyDto.name,
+          id: Not(company.id),
         },
       });
 
-    if (!user) {
-      throw new NotFoundException(
-        `User with ID ${userId} not found`,
-      );
-    }
-
-    /**
-     * Only System Supporter can update company.
-     */
-    const isSupporter = user.designations?.some(
-  (designation) =>
-    designation.designation === DesignationEnum.SUPPORTER,
-);
-
-if (!isSupporter) {
-  throw new ForbiddenException(
-    'Only System Supporter can create a product',
-  );
-
-    }
-
-    /**
-     * Check duplicate company name only
-     * if the name is being changed.
-     */
-    if (
-      updateCompanyDto.name &&
-      updateCompanyDto.name !== company.name
-    ) {
-      const existingCompany =
-        await this.companyRepository.findOne({
-          where: {
-            name: updateCompanyDto.name,
-            id: Not(company.id),
-          },
-        });
-
       if (existingCompany) {
-        throw new ConflictException(
-          `Company "${updateCompanyDto.name}" already exists`,
-        );
+        throw new ConflictException(`Company "${updateCompanyDto.name}" already exists`);
       }
-
-      company.name =
-        updateCompanyDto.name;
+      
+      company.name = updateCompanyDto.name;
     }
 
-    /**
-     * Update company link.
-     */
-    if (
-      updateCompanyDto.link !==
-      undefined
-    ) {
-      company.link =
-        updateCompanyDto.link;
+    if (updateCompanyDto.link !== undefined) {
+      company.link = updateCompanyDto.link;
     }
 
-    /**
-     * Update product if productId
-     * was provided.
-     */
-    if (
-      updateCompanyDto.productId !==
-      undefined
-    ) {
-      const product =
-        await this.productRepository.findOne({
-          where: {
-            id: updateCompanyDto.productId,
-          },
-        });
+    if (updateCompanyDto.productId !== undefined) {
+      const product = await this.productRepository.findOne({
+        where: { id: updateCompanyDto.productId },
+      });
 
       if (!product) {
-        throw new NotFoundException(
-          `Product with ID ${updateCompanyDto.productId} not found`,
-        );
+        throw new NotFoundException(`Product with ID ${updateCompanyDto.productId} not found`);
       }
-
+      
       company.product = product;
     }
 
-    // Set updatedBy.
     company.updatedBy = user;
+    await this.companyRepository.save(company);
 
-    // Save changes.
-    await this.companyRepository.save(
-      company,
-    );
-
-    /**
-     * Get updated company with
-     * all required relations.
-     */
-    const updatedCompany =
-      await this.companyRepository.findOne({
-        where: {
-          uuid,
-        },
-        relations: {
-          product: true,
-          createdBy: true,
-          updatedBy: true,
-        },
-      });
-
-    if (!updatedCompany) {
-      throw new NotFoundException(
-        'Updated company could not be retrieved',
-      );
-    }
-
-    return updatedCompany;
+    // Reuse findOne to return the updated company with all relations
+    return this.findOne(uuid);
   }
 
   // FIND ALL COMPANIES
-  async findAll(
-    query: CompanyQueryDto,
-  ) {
-    const queryBuilder =
-      this.companyRepository
-        .createQueryBuilder('company')
-        .leftJoinAndSelect(
-          'company.product',
-          'product',
-        )
-        .leftJoinAndSelect(
-          'company.createdBy',
-          'createdBy',
-        )
-        .leftJoinAndSelect(
-          'company.updatedBy',
-          'updatedBy',
-        );
+  async findAll(query: CompanyQueryDto) {
+    const queryBuilder = this.companyRepository
+      .createQueryBuilder('company')
+      .leftJoinAndSelect('company.product', 'product')
+      .leftJoinAndSelect('company.createdBy', 'createdBy')
+      .leftJoinAndSelect('company.updatedBy', 'updatedBy');
 
-    /**
-     * Search by company name
-     * OR company number.
-     */
+    // Handle Search functionality
     if (query.search) {
-      const search =
-        query.search.trim();
+      const search = query.search.trim();
 
-      if (
-        /^COMP-\d+$/i.test(search)
-      ) {
-        /**
-         * Example:
-         * COMP-0001 -> company ID 1
-         */
-        const companyId =
-          Number(
-            search
-              .toUpperCase()
-              .replace(
-                'COMP-',
-                '',
-              ),
-          );
-
-        queryBuilder.andWhere(
-          'company.id = :companyId',
-          {
-            companyId,
-          },
-        );
-      } else if (
-        /^\d+$/.test(search)
-      ) {
-        /**
-         * Example:
-         * 1 -> company ID 1
-         */
-        const companyId =
-          Number(search);
-
-        queryBuilder.andWhere(
-          'company.id = :companyId',
-          {
-            companyId,
-          },
-        );
+      if (/^COMP-\d+$/i.test(search)) {
+        // Example: COMP-0001 -> company ID 1
+        const companyId = Number(search.toUpperCase().replace('COMP-', ''));
+        queryBuilder.andWhere('company.id = :companyId', { companyId });
+        
+      } else if (/^\d+$/.test(search)) {
+        // Example: 1 -> company ID 1
+        const companyId = Number(search);
+        queryBuilder.andWhere('company.id = :companyId', { companyId });
+        
       } else {
-        /**
-         * Search company name.
-         */
-        queryBuilder.andWhere(
-          'company.name ILIKE :search',
-          {
-            search: `%${search}%`,
-          },
-        );
+        // Search company name
+        queryBuilder.andWhere('company.name ILIKE :search', { search: `%${search}%` });
       }
     }
 
-    /**
-     * Allowed sorting columns.
-     */
-    const allowedOrderBy = [
-      'id',
-      'name',
-      'createdAt',
-      'updatedAt',
-    ];
+    // Handle Sorting
+    const allowedOrderBy = ['id', 'name', 'createdAt', 'updatedAt'];
+    const orderBy = allowedOrderBy.includes(query.orderBy ?? '') ? query.orderBy : 'createdAt';
+    const sortOrder = query.sortOrder === 'DESC' ? 'DESC' : 'ASC';
 
-    const orderBy =
-      allowedOrderBy.includes(
-        query.orderBy ?? '',
-      )
-        ? query.orderBy
-        : 'createdAt';
+    queryBuilder.orderBy(`company.${orderBy}`, sortOrder);
 
-    /**
-     * Make sure only ASC/DESC
-     * can be used.
-     */
-    const sortOrder =
-      query.sortOrder === 'DESC'
-        ? 'DESC'
-        : 'ASC';
-
-    // Sorting.
-    queryBuilder.orderBy(
-      `company.${orderBy}`,
-      sortOrder,
-    );
-
-    // Pagination.
-    return PaginationService.paginate(
-      queryBuilder,
-      query,
-    );
+    return PaginationService.paginate(queryBuilder, query);
   }
 
   // FIND ONE COMPANY
-  async findOne(
-    uuid: string,
-  ): Promise<Company> {
-    const company =
-      await this.companyRepository.findOne({
-        where: {
-          uuid,
-        },
-        relations: {
-          product: true,
-          createdBy: true,
-          updatedBy: true,
-        },
-      });
+  async findOne(uuid: string): Promise<Company> {
+    const company = await this.companyRepository.findOne({
+      where: { uuid },
+      relations: {
+        product: true,
+        createdBy: true,
+        updatedBy: true,
+      },
+    });
 
     if (!company) {
-      throw new NotFoundException(
-        `Company with UUID ${uuid} not found`,
-      );
+      throw new NotFoundException(`Company with UUID ${uuid} not found`);
     }
 
     return company;
