@@ -18,7 +18,7 @@ import { instanceToPlain } from 'class-transformer';
 
 import { Issue } from '../../entities/issues/issues.entity';
 import { CreateIssueDto } from '../../dto/create-issue.dto';
-import { UpdateIssueStatusDto } from '../../dto/update-issue.dto';
+import { UpdateIssueDto} from '../../dto/update-issue.dto';
 import { CloseIssueDto } from '../../dto/close-issue.dto';
 import { CreateCommentDto } from '../../dto/create-comment.dto';
 
@@ -1006,56 +1006,122 @@ private async validateAssignment(
   // ============================================================
 
   async updateIssue(
-    uuid: string,
-    updateDto: UpdateIssueStatusDto,
-    userUuid: string,
-  ) {
-    const issue =
-      await this.issueRepository.findOne({
-        where: {
-          uuid,
-        },
-      });
-
-    if (!issue) {
-      throw new NotFoundException(
-        `Issue with UUID ${uuid} not found`,
-      );
-    }
-
-    const user =
-      await this.userRepository.findOne({
-        where: {
-          uuid: userUuid,
-        },
-
-        relations: {
-          designations: true,
-        },
-      });
-
-    if (!user) {
-      throw new NotFoundException(
-        'User not found',
-      );
-    }
-
-    issue.closedBy = user;
-
-    issue.status =
-      updateDto.status;
-
-    await this.issueRepository.save(
-      issue,
+  uuid: string,
+  updateIssueDto: UpdateIssueDto,
+  userUuid: string,
+) {
+  if (!isUUID(uuid)) {
+    throw new BadRequestException(
+      'Invalid issue UUID',
     );
-
-    return {
-      statusCode: 200,
-
-      message:
-        'Issue closed successfully',
-    };
   }
+
+   // Get logged-in user with designations
+  const currentUser =
+    await this.userRepository.findOne({
+      where: {
+        uuid: userUuid,
+      },
+      relations: {'designations': true},
+    });
+
+  if (!currentUser) {
+    throw new NotFoundException(
+      'User not found',
+    );
+  }
+
+   // Check if the logged-in user is a Supporter
+  const isSupporter = currentUser.designations?.some(
+    (designation) =>
+      designation.designation === Designation.SUPPORTER,
+  );
+
+  if (!isSupporter) {
+    throw new ForbiddenException(
+      'Only System Supporter can update an issue',
+    );
+  }
+
+
+  const issue =
+    await this.issueRepository.findOne({
+      where: { uuid },
+      relations: {
+        'company': true,
+        'createdBy': true,
+        'updatedBy': true,
+        'closedBy': true,
+      },
+    });
+
+  if (!issue) {
+    throw new NotFoundException(
+      'Issue not found',
+    );
+  }
+
+  // Closed issues cannot be edited
+  if (issue.status === IssueStatus.CLOSED) {
+    throw new BadRequestException(
+      'Closed issues cannot be updated',
+    );
+  }
+
+  // Update company
+  if (updateIssueDto.companyId !== undefined) {
+    const company =
+      await this.companyRepository.findOne({
+        where: {
+          id: updateIssueDto.companyId,
+        },
+      });
+
+    if (!company) {
+      throw new NotFoundException(
+        'Company not found',
+      );
+    }
+
+    issue.company = company;
+  }
+
+  // Update reporter name
+  if (updateIssueDto.reporterName !== undefined) {
+    issue.reporterName =
+      updateIssueDto.reporterName;
+  }
+
+  // Update reporter mobile
+  if (updateIssueDto.reporterMobile !== undefined) {
+    issue.reporterMobile =
+      updateIssueDto.reporterMobile;
+  }
+
+  // Update priority
+  if (updateIssueDto.priority !== undefined) {
+    issue.priority = updateIssueDto.priority;
+  }
+
+  // Update title
+  if (updateIssueDto.title !== undefined) {
+    issue.title = updateIssueDto.title;
+  }
+
+  // Update description
+  if (updateIssueDto.description !== undefined) {
+    issue.description =
+      updateIssueDto.description;
+  }
+
+  const updatedIssue =
+    await this.issueRepository.save(issue);
+
+  return {
+    message: 'Issue updated successfully',
+    issue: updatedIssue,
+  };
+}
 
   // ============================================================
   // CLOSE ISSUE

@@ -1,6 +1,6 @@
 import { IssuesService } from '../services/issue/issues.service';
 import { CreateIssueDto } from '../dto/create-issue.dto';
-import { UpdateIssueStatusDto } from '../dto/update-issue.dto';
+import { UpdateIssueDto } from '../dto/update-issue.dto';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { CreateCommentDto } from '../dto/create-comment.dto';
 import { CloseIssueDto } from '../dto/close-issue.dto';
@@ -9,7 +9,13 @@ import { User } from 'src/modules/users/entities/user.entity';
 import { SearchParams } from 'src/common/utils/searchparams.utils';
 import { PaginationOptionsDto } from 'src/common/pagination/dto/pagination-options.dto';
 import { QueryParamsDto } from 'src/common/queries/query-params.dto';
-import {ApiBearerAuth,ApiOperation,ApiQuery,ApiResponse, ApiTags,} from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import {
   Controller,
   Get,
@@ -22,9 +28,6 @@ import {
   Req,
   Query,
 } from '@nestjs/common';
-
-
-
 
 @Controller('api/issues')
 @ApiTags('Issues')
@@ -39,47 +42,44 @@ export class IssuesController {
   create(@Body() createIssueDto: CreateIssueDto, @Req() req: any) {
     return this.issuesService.create(createIssueDto, req.user);
   }
-  
+
   @Post('comments')
   @ApiOperation({ summary: 'Create a comment' })
   @ApiResponse({ status: 201, description: 'Comment created successfully.' })
- async createComment(
-  @Req() req,
-  @Body() createCommentDto: CreateCommentDto,
-) {
-  return this.issuesService.createComment(
-    createCommentDto,
-    req.user.uuid,
-  );
-}
-  
- 
+  async createComment(@Req() req, @Body() createCommentDto: CreateCommentDto) {
+    return this.issuesService.createComment(createCommentDto, req.user.uuid);
+  }
+
   @Get()
   @ApiOperation({ summary: 'Get all issues' })
   @ApiResponse({ status: 201, description: 'Issues retrieved successfully.' })
   async findAll(
-     @Req() req,
+    @Req() req,
     @Query() queryParamsDto: QueryParamsDto,
     @Query() paginationOptsDto: PaginationOptionsDto,
   ) {
-    return this.issuesService.findAll(req.user.uuid, queryParamsDto, paginationOptsDto);
+    return this.issuesService.findAll(
+      req.user.uuid,
+      queryParamsDto,
+      paginationOptsDto,
+    );
   }
 
   @Patch(':uuid')
-  @ApiOperation({ summary: 'update issue status' })
+  @ApiOperation({ summary: 'Update issue' })
   @ApiResponse({
-    status: 201,
-    description: 'Issue status updated successfully.',
+    status: 200,
+    description: 'Issue updated successfully.',
   })
-  UpdateIssueStatus(
-    @Param('uuid', ParseUUIDPipe) uuid: string,
-    @Body() updateDto: UpdateIssueStatusDto,
-    @Req() req,
+  async updateIssue(
+    @Param('uuid') uuid: string,
+    @Body() updateIssueDto: UpdateIssueDto,
+    @Req() req: any,
   ) {
-    return this.issuesService.updateIssue(uuid, updateDto, req.user.uuid);
+    return this.issuesService.updateIssue(uuid, updateIssueDto, req.user.uuid);
   }
 
-   @Post(':uuid/close')
+  @Post(':uuid/close')
   @ApiOperation({ summary: 'Close issue' })
   @ApiResponse({
     status: 200,
@@ -92,10 +92,6 @@ export class IssuesController {
   ) {
     return this.issuesService.closeIssue(uuid, closeIssueDto, req.user.uuid);
   }
-
-   
-
-
 
   //GET MY ISSUES
   @ApiQuery({
