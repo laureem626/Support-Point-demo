@@ -41,6 +41,7 @@ import {
 } from 'src/common/enums/issue.enum';
 
 import { QueryParamsDto } from 'src/common/queries/query-params.dto';
+import { NotificationsGateway } from '../../../notifications/gateway/notifications.gateway';
 
 
 @Injectable()
@@ -60,6 +61,8 @@ export class IssuesService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+     private readonly notificationsGateway: NotificationsGateway,
   ) {}
 
   // ============================================================
@@ -355,6 +358,17 @@ export class IssuesService {
       await this.commentRepository.save(
         comment,
       );
+
+      this.notificationsGateway.notifyUser(
+  assignedUser.uuid,
+  {
+    type: 'ISSUE_ASSIGNED',
+    title: 'New Issue Assigned',
+    message: `Issue ${issue.number} has been assigned to you`,
+    issueUuid: issue.uuid,
+    issueNumber: issue.number,
+  },
+);
 
     // ----------------------------------------------------------
     // 9. Return saved comment

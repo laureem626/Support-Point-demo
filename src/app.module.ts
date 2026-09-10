@@ -13,6 +13,7 @@ import { ProductsModule } from './modules/products/products.module';
 import { CompaniesModule } from './modules/companies/companies.modules';
 import { IssuesModule } from './modules/issues/issues.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { NotificationsModule } from './modules/notifications/module/notifications.module';
 
 @Module({
   imports: [
@@ -42,7 +43,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     CompaniesModule,
     IssuesModule,
     DashboardModule,
-
+    NotificationsModule,
   ],
 
   providers: [IsUniqueConstraint],
