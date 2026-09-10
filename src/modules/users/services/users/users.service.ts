@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { User } from '../../entities/user.entity';
 import { Designation } from '../../entities/designation.entity';
 import { CreateUserDto } from '../../dtos/create-user.dto';
+import { UpdateUserDto } from '../../dtos/update-user.dto';
 import { UserQueryDto } from '../../dtos/user-query.dto';
 import { PaginationOptionsDto } from '../../../../common/pagination/dto/pagination-options.dto';
 import { hashPassword } from '../../../../common/utils/password-hash';
@@ -20,7 +21,16 @@ export class UsersService {
     private readonly designationRepository: Repository<Designation>,
   ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<{ user: User }> {
+  // Helper method to flatten designation objects into a clean string array
+  private formatUser(user: User) {
+    const { designations, ...userData } = user;
+    return {
+      ...userData,
+      designations: designations ? designations.map((d) => d.designation) : [],
+    };
+  }
+
+  async create(createUserDto: CreateUserDto) {
     const { password, designations, ...userData } = createUserDto;
 
     const hashedPassword = await hashPassword(password);
@@ -61,14 +71,65 @@ export class UsersService {
     }
 
     return {
-      user: userWithDesignations,
+      user: this.formatUser(userWithDesignations),
     };
   }
 
-  async findAll(
-    query: UserQueryDto,
-    paginationOptsDto: PaginationOptionsDto,
-  ) {
+  async update(uuid: string, updateUserDto: UpdateUserDto) {
+    const { password, designations, ...userData } = updateUserDto;
+
+    // 1. Find existing user by uuid
+    const user = await this.usersRepository.findOne({
+      where: { uuid },
+      relations: { designations: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with UUID ${uuid} not found`);
+    }
+
+    // 2. Handle password hashing if a new password is provided
+    if (password) {
+      user.password = await hashPassword(password);
+    }
+
+    // 3. Update basic user details
+    Object.assign(user, userData);
+    await this.usersRepository.save(user);
+
+    // 4. Update designations if provided
+    if (designations !== undefined) {
+      // Remove old designations
+      await this.designationRepository.delete({ userId: user.id });
+
+      // Create new designation records
+      if (designations.length > 0) {
+        const designationEntities = designations.map((designation) =>
+          this.designationRepository.create({
+            designation,
+            userId: user.id,
+          }),
+        );
+        await this.designationRepository.save(designationEntities);
+      }
+    }
+
+    // 5. Fetch and return the updated user with relations
+    const updatedUser = await this.usersRepository.findOne({
+      where: { id: user.id },
+      relations: { designations: true },
+    });
+
+    if (!updatedUser) {
+      throw new NotFoundException('Updated user could not be found');
+    }
+
+    return {
+      user: this.formatUser(updatedUser),
+    };
+  }
+
+  async findAll(query: UserQueryDto, paginationOptsDto: PaginationOptionsDto) {
     const { search, orderBy, sortOrder, isActive, designation } = query;
 
     const queryBuilder = this.usersRepository
@@ -90,9 +151,7 @@ export class UsersService {
 
     // Filter based on active/not active
     if (isActive !== undefined) {
-      queryBuilder.andWhere('user.isActive = :isActive', {
-        isActive,
-      });
+      queryBuilder.andWhere('user.isActive = :isActive', { isActive });
     }
 
     // Filter by designation
@@ -103,10 +162,10 @@ export class UsersService {
 
       queryBuilder.andWhere(
         `EXISTS (
-      SELECT 1 FROM "designations" d
-      WHERE d."userId" = "user"."id"
-      AND d."designation" IN (:...designationList)
-    )`,
+          SELECT 1 FROM "designations" d
+          WHERE d."userId" = "user"."id"
+          AND d."designation" IN (:...designationList)
+        )`,
         { designationList },
       );
     }
@@ -134,30 +193,29 @@ export class UsersService {
       ['id', 'firstName', 'lastName', 'mobile'],
     );
 
-    return PaginationService.paginate(
+    const paginatedResult = await PaginationService.paginate(
       queryBuilder,
       paginationOptsDto,
     );
+
+    // Return mapped paginated result with formatted user objects
+    return {
+      ...paginatedResult,
+      data: paginatedResult.data.map((user: User) => this.formatUser(user)),
+    };
   }
 
-  async findOne(uuid: string): Promise<User> {
-    const userWithDesignations =
-      await this.usersRepository.findOne({
-        where: {
-          uuid,
-        },
-        relations: {
-          designations: true,
-        },
-      });
+  async findOne(uuid: string) {
+    const userWithDesignations = await this.usersRepository.findOne({
+      where: { uuid },
+      relations: { designations: true },
+    });
 
     if (!userWithDesignations) {
-      throw new NotFoundException(
-        `User with UUID ${uuid} not found`,
-      );
+      throw new NotFoundException(`User with UUID ${uuid} not found`);
     }
 
-    return userWithDesignations;
+    return this.formatUser(userWithDesignations);
   }
 
   async getDistinctDesignations(): Promise<string[]> {
@@ -169,15 +227,3 @@ export class UsersService {
     return results.map((row) => row.designation);
   }
 }
-
-  // async getUserProfile(uuid: string): Promise<User> {
-  //   const user = await this.usersRepository.findOne({
-  //     where: { uuid },
-  //   });
-
-  //   if (!user) {
-  //     throw new NotFoundException(`User not found`);
-  //   }
-
-  //   return user;
-  // }

@@ -66,18 +66,24 @@ export class UserQueryDto {
   sortOrder?: SortOrder = SortOrder.ASC;
 
   @ApiPropertyOptional({
+    description: 'Filter by single or multiple designations',
     enum: Designation,
     enumName: 'Designation',
     isArray: true,
-    description: 'Filter users by one or multiple designations',
+    required: false,
   })
   @IsOptional()
   @Transform(({ value }) => {
-    if (!value) return undefined;
-    if (typeof value === 'string') {
-      return value.split(',').map((item) => item.trim());
+    if (Array.isArray(value)) {
+      return value;
     }
-    return Array.isArray(value) ? value : [value];
+    if (typeof value === 'string') {
+      return value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+    return value;
   })
   @IsArray()
   @IsEnum(Designation, { each: true })
