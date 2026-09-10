@@ -82,7 +82,7 @@ export class IssuesController {
   @Post(':uuid/close')
   @ApiOperation({ summary: 'Close issue' })
   @ApiResponse({
-    status: 200,
+    status: 201,
     description: 'Issue closed successfully.',
   })
   closeIssue(

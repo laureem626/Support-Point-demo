@@ -1265,7 +1265,7 @@ private async validateAssignment(
     // ----------------------------------------------------------
 
     return {
-      statusCode: 200,
+      statusCode: 201,
 
       message:
         'Issue closed successfully',
