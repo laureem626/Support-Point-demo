@@ -12,6 +12,10 @@ const config = {
   username: `${process.env.DATABASE_USER}`,
   password: `${process.env.DATABASE_PASSWORD}`,
   database: `${process.env.DATABASE_NAME}`,
+
+  ssl: {
+    rejectUnauthorized: false,
+  },
   entities: [join(__dirname, '..', '**', '*.entity.{ts,js}')],
   migrations: [join(__dirname, '..', 'db', 'migrations', '*.{ts,js}')],
   autoLoadEntities: true,
