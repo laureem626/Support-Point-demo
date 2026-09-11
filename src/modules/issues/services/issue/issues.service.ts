@@ -41,6 +41,7 @@ import {
 } from 'src/common/enums/issue.enum';
 
 import { QueryParamsDto } from 'src/common/queries/query-params.dto';
+import { DashboardService } from 'src/modules/dashboard/services/dashboard.service';
 import { NotificationsGateway } from '../../../notifications/gateway/notifications.gateway';
 
 
@@ -61,6 +62,8 @@ export class IssuesService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+    private readonly dashboardService: DashboardService,
 
      private readonly notificationsGateway: NotificationsGateway,
   ) {}
@@ -163,6 +166,8 @@ export class IssuesService {
           updatedBy: true,
         },
       });
+
+      await this.dashboardService.broadcastDashboardStats();
 
     return {
       statusCode: 201,
@@ -1131,6 +1136,8 @@ private async validateAssignment(
   const updatedIssue =
     await this.issueRepository.save(issue);
 
+   await this.dashboardService.broadcastDashboardStats();
+   
   return {
     message: 'Issue updated successfully',
     issue: updatedIssue,

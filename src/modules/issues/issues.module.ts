@@ -8,17 +8,13 @@ import { IssueAssignment } from './entities/issues/issues-assignment.entity';
 import { Comment } from './entities/issues/comment.entity';
 import { Company } from '../companies/entities/company.entity';
 import { NotificationsModule } from '../notifications/module/notifications.module';
+import { DashboardModule } from '../dashboard/dashboard.module';
 
 @Module({
-   imports: [
-    TypeOrmModule.forFeature([
-      Issue,
-      Comment,
-      IssueAssignment,
-      Company,
-      User,
-    ]),
-     NotificationsModule,
+  imports: [
+    TypeOrmModule.forFeature([Issue, Comment, IssueAssignment, Company, User]),
+    DashboardModule,
+    NotificationsModule,
   ],
   controllers: [IssuesController],
   providers: [IssuesService],
