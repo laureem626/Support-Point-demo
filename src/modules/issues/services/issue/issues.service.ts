@@ -999,7 +999,7 @@ private async validateAssignment(
 
         .orderBy(
           'comment.createdAt',
-          'ASC',
+          'DESC',
         )
 
         .getOne();
