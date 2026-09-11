@@ -1,4 +1,9 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, Repository } from 'typeorm';
 import { Product } from '../entities/product.entity';
@@ -8,6 +13,7 @@ import { User } from '../../users/entities/user.entity';
 import { PaginationService } from '../../../common/pagination/pagination-service';
 import { ProductQueryDto } from '../dtos/product-query.dto';
 import { Designation } from 'src/common/enums/issue.enum';
+import { DashboardService } from 'src/modules/dashboard/services/dashboard.service';
 @Injectable()
 export class ProductsService {
   constructor(
@@ -16,10 +22,15 @@ export class ProductsService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+    private readonly dashboardService: DashboardService,
   ) {}
 
-  // CREATE PRODUCT 
- async create(createProductDto: CreateProductDto, userId: number): Promise<Product> {
+  // CREATE PRODUCT
+  async create(
+    createProductDto: CreateProductDto,
+    userId: number,
+  ): Promise<Product> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: { designations: true },
@@ -34,7 +45,9 @@ export class ProductsService {
     );
 
     if (!isSupporter) {
-      throw new ForbiddenException('Only System Supporter can create a product');
+      throw new ForbiddenException(
+        'Only System Supporter can create a product',
+      );
     }
 
     const existingProduct = await this.productRepository.findOne({
@@ -42,7 +55,9 @@ export class ProductsService {
     });
 
     if (existingProduct) {
-      throw new ConflictException(`Product "${createProductDto.name}" already exists`);
+      throw new ConflictException(
+        `Product "${createProductDto.name}" already exists`,
+      );
     }
 
     const newProduct = this.productRepository.create({
@@ -53,12 +68,15 @@ export class ProductsService {
 
     const savedProduct = await this.productRepository.save(newProduct);
 
+    //  BROADCAST FRESH DASHBOARD STATS
+    await this.dashboardService.broadcastDashboardStats();
+
     // Reuse findOne to return the created product with all relations
     return this.findOne(savedProduct.uuid);
   }
 
   //UPDATE PRODUCT
-async update(
+  async update(
     uuid: string,
     updateProductDto: UpdateProductDto,
     userId: number,
@@ -85,7 +103,9 @@ async update(
     );
 
     if (!isSupporter) {
-      throw new ForbiddenException('Only System Supporter can update a product');
+      throw new ForbiddenException(
+        'Only System Supporter can update a product',
+      );
     }
 
     // Check duplicate product name only if name is being changed
@@ -98,7 +118,9 @@ async update(
       });
 
       if (existingProduct) {
-        throw new ConflictException(`Product "${updateProductDto.name}" already exists`);
+        throw new ConflictException(
+          `Product "${updateProductDto.name}" already exists`,
+        );
       }
 
       product.name = updateProductDto.name;
@@ -115,11 +137,13 @@ async update(
     product.updatedBy = user;
     await this.productRepository.save(product);
 
+    await this.dashboardService.broadcastDashboardStats();
+
     // Reuse findOne to return the updated product with all relations
     return this.findOne(uuid);
   }
 
-// FIND ALL PRODUCTS
+  // FIND ALL PRODUCTS
   async findAll(query: ProductQueryDto) {
     const queryBuilder = this.productRepository
       .createQueryBuilder('product')

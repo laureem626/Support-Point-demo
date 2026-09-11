@@ -10,6 +10,7 @@ import { PaginationOptionsDto } from '../../../../common/pagination/dto/paginati
 import { hashPassword } from '../../../../common/utils/password-hash';
 import { validateAndSort } from '../../../../common/utils/sort-queryset';
 import { PaginationService } from '../../../../common/pagination/pagination-service';
+import { DashboardService } from 'src/modules/dashboard/services/dashboard.service';
 
 @Injectable()
 export class UsersService {
@@ -19,6 +20,8 @@ export class UsersService {
 
     @InjectRepository(Designation)
     private readonly designationRepository: Repository<Designation>,
+
+    private readonly dashboardService: DashboardService,
   ) {}
 
   // Helper method to flatten designation objects into a clean string array
@@ -68,6 +71,8 @@ export class UsersService {
 
     if (!userWithDesignations) {
       throw new NotFoundException('User could not be found');
+
+      await this.dashboardService.broadcastDashboardStats();
     }
 
     return {
@@ -78,7 +83,7 @@ export class UsersService {
   async update(uuid: string, updateUserDto: UpdateUserDto) {
     const { password, designations, ...userData } = updateUserDto;
 
-    // 1. Find existing user by uuid
+    //  Find existing user by uuid
     const user = await this.usersRepository.findOne({
       where: { uuid },
       relations: { designations: true },
@@ -88,16 +93,16 @@ export class UsersService {
       throw new NotFoundException(`User with UUID ${uuid} not found`);
     }
 
-    // 2. Handle password hashing if a new password is provided
+    //  Handle password hashing if a new password is provided
     if (password) {
       user.password = await hashPassword(password);
     }
 
-    // 3. Update basic user details
+    //  Update basic user details
     Object.assign(user, userData);
     await this.usersRepository.save(user);
 
-    // 4. Update designations if provided
+    //  Update designations if provided
     if (designations !== undefined) {
       // Remove old designations
       await this.designationRepository.delete({ userId: user.id });
@@ -114,7 +119,7 @@ export class UsersService {
       }
     }
 
-    // 5. Fetch and return the updated user with relations
+    //  Fetch and return the updated user with relations
     const updatedUser = await this.usersRepository.findOne({
       where: { id: user.id },
       relations: { designations: true },
@@ -123,6 +128,8 @@ export class UsersService {
     if (!updatedUser) {
       throw new NotFoundException('Updated user could not be found');
     }
+
+    await this.dashboardService.broadcastDashboardStats();
 
     return {
       user: this.formatUser(updatedUser),

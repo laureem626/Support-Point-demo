@@ -4,11 +4,10 @@ import { ProductsController } from './controllers/product.controller';
 import { Product } from './entities/product.entity';
 import { Module } from '@nestjs/common';
 import { User } from '../users/entities/user.entity';
+import { DashboardModule } from '../dashboard/dashboard.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Product, User]),
-  ],
+  imports: [TypeOrmModule.forFeature([Product, User]), DashboardModule],
   controllers: [ProductsController],
   providers: [ProductsService],
   exports: [TypeOrmModule],

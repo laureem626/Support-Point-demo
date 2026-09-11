@@ -10,6 +10,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { UsersModule } from '../users/users.module';
 import { UsersService } from '../users/services/users/users.service';
+import { DashboardModule } from '../dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -19,6 +20,8 @@ import { UsersService } from '../users/services/users/users.service';
     
 
     UsersModule,
+
+    DashboardModule,
 
     // Enable Passport for authentication strategies
     PassportModule,

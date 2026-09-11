@@ -5,9 +5,11 @@ import { CompaniesService } from './company.service';
 import { CompaniesController } from './controllers/company.controller';
 import { Product } from '../products/entities/product.entity';
 import { User } from '../users/entities/user.entity';
+import { DashboardModule } from '../dashboard/dashboard.module';
 @Module({
      imports: [
     TypeOrmModule.forFeature([Company, Product ,User]),
+    DashboardModule,
   ],
   controllers: [CompaniesController],
   providers: [CompaniesService],

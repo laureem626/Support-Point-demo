@@ -6,6 +6,7 @@ import { Product } from '../../products/entities/product.entity';
 import { Company } from '../../companies/entities/company.entity';
 import { Issue } from '../../issues/entities/issues/issues.entity';
 import { IssuePriority, IssueStatus } from 'src/common/enums/issue.enum';
+import { DashboardGateway } from '../gateway/dashboard.gateway';
 @Injectable()
 export class DashboardService {
   constructor(
@@ -13,6 +14,7 @@ export class DashboardService {
     @InjectRepository(Product) private readonly productRepository: Repository<Product>,
     @InjectRepository(Company) private readonly companyRepository: Repository<Company>,
     @InjectRepository(Issue) private readonly issueRepository: Repository<Issue>,
+    private readonly dashboardGateway: DashboardGateway,
   ) {}
 
   async getDashboardStats() {
@@ -65,5 +67,11 @@ export class DashboardService {
         closed,
       },
     };
+  }
+  // Broadcast fresh stats to all connected WebSocket clients
+  async broadcastDashboardStats() {
+    const stats = await this.getDashboardStats();
+    this.dashboardGateway.sendDashboardStats(stats);
+    return stats;
   }
 }
