@@ -8,7 +8,7 @@ import {
 import  type { Request } from 'express';
 
 import { NotificationsService } from '../service/notifications.service';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 
 @Controller('api/notifications')
@@ -19,6 +19,7 @@ export class NotificationsController {
     private readonly notificationsService: NotificationsService,
   ) {}
 
+  @ApiOperation({ summary: 'Retrieve user notifications' })
   @Get()
   async getNotifications(@Req() req: Request) {
     const userUuid = (req.user as any).uuid;
