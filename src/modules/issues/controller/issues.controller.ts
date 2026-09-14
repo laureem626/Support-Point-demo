@@ -62,6 +62,7 @@ export class IssuesController {
       req.user.uuid,
       queryParamsDto,
       paginationOptsDto,
+      req,
     );
   }
 

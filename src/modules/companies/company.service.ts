@@ -15,6 +15,7 @@ import { PaginationService } from '../../common/pagination/pagination-service';
 import { CompanyQueryDto } from './dtos/company-query.dto';
 import { Designation } from 'src/common/enums/issue.enum';
 import { DashboardService } from '../dashboard/services/dashboard.service';
+import { PaginationOptionsDto } from 'src/common/pagination/dto/pagination-options.dto';
 @Injectable()
 export class CompaniesService {
   constructor(
@@ -169,44 +170,199 @@ export class CompaniesService {
   }
 
   // FIND ALL COMPANIES
-  async findAll(query: CompanyQueryDto) {
-    const queryBuilder = this.companyRepository
-      .createQueryBuilder('company')
-      .leftJoinAndSelect('company.product', 'product')
-      .leftJoinAndSelect('company.createdBy', 'createdBy')
-      .leftJoinAndSelect('company.updatedBy', 'updatedBy');
+  async findAll(
+  query: CompanyQueryDto,
+  paginationOptsDto: PaginationOptionsDto,
+  baseUrl: string,
+) {
+  const queryBuilder = this.companyRepository
+    .createQueryBuilder('company')
+    .leftJoinAndSelect(
+      'company.product',
+      'product',
+    )
+    .leftJoinAndSelect(
+      'company.createdBy',
+      'createdBy',
+    )
+    .leftJoinAndSelect(
+      'company.updatedBy',
+      'updatedBy',
+    );
 
-    // Handle Search functionality
-    if (query.search) {
-      const search = query.search.trim();
+  // ----------------------------------------------------------
+  // 1. SEARCH
+  // ----------------------------------------------------------
 
-      if (/^COMP-\d+$/i.test(search)) {
-        // Example: COMP-0001 -> company ID 1
-        const companyId = Number(search.toUpperCase().replace('COMP-', ''));
-        queryBuilder.andWhere('company.id = :companyId', { companyId });
-      } else if (/^\d+$/.test(search)) {
-        // Example: 1 -> company ID 1
-        const companyId = Number(search);
-        queryBuilder.andWhere('company.id = :companyId', { companyId });
-      } else {
-        // Search company name
-        queryBuilder.andWhere('company.name ILIKE :search', {
+  if (query.search) {
+    const search = query.search.trim();
+
+    if (/^COMP-\d+$/i.test(search)) {
+      // Example: COMP-0001 -> company ID 1
+      const companyId = Number(
+        search
+          .toUpperCase()
+          .replace('COMP-', ''),
+      );
+
+      queryBuilder.andWhere(
+        'company.id = :companyId',
+        { companyId },
+      );
+    } else if (/^\d+$/.test(search)) {
+      // Example: 1 -> company ID 1
+      const companyId = Number(search);
+
+      queryBuilder.andWhere(
+        'company.id = :companyId',
+        { companyId },
+      );
+    } else {
+      // Search company name
+      queryBuilder.andWhere(
+        'company.name ILIKE :search',
+        {
           search: `%${search}%`,
-        });
-      }
+        },
+      );
     }
+  }
 
-    // Handle Sorting
-    const allowedOrderBy = ['id', 'name', 'createdAt', 'updatedAt'];
-    const orderBy = allowedOrderBy.includes(query.orderBy ?? '')
+  // ----------------------------------------------------------
+  // 2. SORTING
+  // ----------------------------------------------------------
+
+  const allowedOrderBy = [
+    'id',
+    'name',
+    'createdAt',
+    'updatedAt',
+  ];
+
+  const orderBy =
+    allowedOrderBy.includes(
+      query.orderBy ?? '',
+    )
       ? query.orderBy
       : 'createdAt';
-    const sortOrder = query.sortOrder === 'DESC' ? 'DESC' : 'ASC';
 
-    queryBuilder.orderBy(`company.${orderBy}`, sortOrder);
+  const sortOrder =
+    query.sortOrder === 'DESC'
+      ? 'DESC'
+      : 'ASC';
 
-    return PaginationService.paginate(queryBuilder, query);
-  }
+  queryBuilder.orderBy(
+    `company.${orderBy}`,
+    sortOrder,
+  );
+
+  // ----------------------------------------------------------
+  // 3. PAGINATION
+  // ----------------------------------------------------------
+
+  const page =
+    paginationOptsDto.page || 1;
+
+  const pageSize =
+    paginationOptsDto.pageSize || 10;
+
+  const skip =
+    (page - 1) * pageSize;
+
+  queryBuilder
+    .skip(skip)
+    .take(pageSize);
+
+  // ----------------------------------------------------------
+  // 4. GET COMPANIES + TOTAL
+  // ----------------------------------------------------------
+
+  const [
+    companies,
+    total,
+  ] = await queryBuilder.getManyAndCount();
+
+  // ----------------------------------------------------------
+  // 5. PAGE COUNT
+  // ----------------------------------------------------------
+
+  const pageCount =
+    Math.ceil(total / pageSize);
+
+  // ----------------------------------------------------------
+  // 6. BUILD PAGINATION LINK
+  // ----------------------------------------------------------
+
+  const buildPaginationLink = (
+    targetPage: number,
+  ) => {
+    const params =
+      new URLSearchParams();
+
+    params.set(
+      'page',
+      targetPage.toString(),
+    );
+
+    params.set(
+      'pageSize',
+      pageSize.toString(),
+    );
+
+    // Preserve search
+    if (query.search) {
+      params.set(
+        'search',
+        query.search,
+      );
+    }
+
+    // Preserve sorting
+    if (query.orderBy) {
+      params.set(
+        'orderBy',
+        query.orderBy,
+      );
+    }
+
+    if (query.sortOrder) {
+      params.set(
+        'sortOrder',
+        query.sortOrder,
+      );
+    }
+
+    return `${baseUrl}?${params.toString()}`;
+  };
+
+  // ----------------------------------------------------------
+  // 7. RESPONSE
+  // ----------------------------------------------------------
+
+  return {
+    data: companies,
+
+    meta: {
+      page,
+      pageSize,
+      itemCount: companies.length,
+      pageCount,
+       nextLink:
+        page < pageCount
+          ? buildPaginationLink(
+              page + 1,
+            )
+          : null,
+
+      prevLink:
+        page > 1
+          ? buildPaginationLink(
+              page - 1,
+            )
+          : null,
+    },
+  };
+}
 
   // FIND ONE COMPANY
   async findOne(uuid: string): Promise<Company> {

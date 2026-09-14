@@ -34,6 +34,7 @@ import { PaginationOptionsDto } from 'src/common/pagination/dto/pagination-optio
 import { PaginationService } from 'src/common/pagination/pagination-service';
 
 import { validateAndSort } from 'src/common/utils/sort-queryset';
+import { Request } from 'express';
 
 import {
   Designation,
@@ -694,6 +695,7 @@ private async validateAssignment(
     userUuid: string,
     queryParamsDto: QueryParamsDto,
     paginationOptsDto: PaginationOptionsDto,
+    req:Request,
   ) {
     const {
       search,
@@ -928,25 +930,66 @@ private async validateAssignment(
       );
 
     // ----------------------------------------------------------
-    // 12. RESPONSE
     // ----------------------------------------------------------
+// 12. RESPONSE
+// ----------------------------------------------------------
 
-    return {
-      data,
+const pageCount = Math.ceil(total / limit);
 
-      meta: {
-        total,
-        page,
-        limit,
+const buildPaginationLink = (targetPage: number) => {
+  const params = new URLSearchParams();
 
-        totalPages:
-          Math.ceil(
-            total / limit,
-          ),
-      },
-    };
+  params.set('page', targetPage.toString());
+  params.set('pageSize', limit.toString());
+
+  if (search) {
+    params.set('search', search);
   }
 
+  if (status) {
+    params.set('status', status);
+  }
+
+  if (priority) {
+    params.set('priority', priority);
+  }
+
+  if (orderBy) {
+    params.set('orderBy', orderBy);
+  }
+
+  if (sortOrder) {
+    params.set('sortOrder', sortOrder);
+  }
+
+  const baseUrl = `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`;
+
+  return `${baseUrl}?${params.toString()}`;
+};
+
+return {
+  data,
+
+  meta: {
+    page,
+    pageSize: limit,
+    itemCount: data.length,
+    pageCount,
+
+    //hasNextPage: page < pageCount,
+    //hasPreviousPage: page > 1,
+
+    nextLink:
+      page < pageCount
+        ? buildPaginationLink(page + 1)
+        : null,
+
+    prevLink:
+      page > 1
+        ? buildPaginationLink(page - 1)
+        : null,
+  },
+};}
   // ============================================================
   // GET ISSUE BY UUID
   // ============================================================

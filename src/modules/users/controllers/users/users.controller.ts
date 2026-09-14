@@ -21,7 +21,9 @@ import {
   Patch,
   Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
+import type { Request } from 'express';
 @Controller('api/users')
 @ApiTags('Users')
 @UseGuards(JwtAuthGuard)
@@ -53,8 +55,9 @@ export class UsersController {
   async findAll(
     @Query() paginationOptsDto: PaginationOptionsDto,
     @Query() queryParamsDto: UserQueryDto,
+    @Req() req: Request,
   ) {
-    return await this.usersService.findAll(queryParamsDto, paginationOptsDto);
+    return await this.usersService.findAll(queryParamsDto, paginationOptsDto, req);
   }
 
   // @ApiOperation({ summary: 'Get user profile' })

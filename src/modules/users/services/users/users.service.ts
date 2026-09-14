@@ -11,6 +11,7 @@ import { hashPassword } from '../../../../common/utils/password-hash';
 import { validateAndSort } from '../../../../common/utils/sort-queryset';
 import { PaginationService } from '../../../../common/pagination/pagination-service';
 import { DashboardService } from 'src/modules/dashboard/services/dashboard.service';
+import {Request} from 'express';
 
 @Injectable()
 export class UsersService {
@@ -136,81 +137,247 @@ export class UsersService {
     };
   }
 
-  async findAll(query: UserQueryDto, paginationOptsDto: PaginationOptionsDto) {
-    const { search, orderBy, sortOrder, isActive, designation } = query;
+  async findAll(
+  query: UserQueryDto,
+  paginationOptsDto: PaginationOptionsDto,
+  req: Request,
+) {
+  const {
+    search,
+    orderBy,
+    sortOrder,
+    isActive,
+    designation,
+  } = query;
 
-    const queryBuilder = this.usersRepository
-      .createQueryBuilder('user')
-      .leftJoinAndSelect('user.designations', 'designation')
-      .select([
-        'user.id',
-        'user.uuid',
-        'user.firstName',
-        'user.lastName',
-        'user.mobile',
-        'user.isActive',
-        'user.createdAt',
-        'user.updatedAt',
-        'designation.id',
-        'designation.uuid',
-        'designation.designation',
-      ]);
+  const queryBuilder = this.usersRepository
+    .createQueryBuilder('user')
+    .leftJoinAndSelect(
+      'user.designations',
+      'designation',
+    )
+    .select([
+      'user.id',
+      'user.uuid',
+      'user.firstName',
+      'user.lastName',
+      'user.mobile',
+      'user.isActive',
+      'user.createdAt',
+      'user.updatedAt',
+      'designation.id',
+      'designation.uuid',
+      'designation.designation',
+    ]);
 
-    // Filter based on active/not active
-    if (isActive !== undefined) {
-      queryBuilder.andWhere('user.isActive = :isActive', { isActive });
-    }
+  // ----------------------------------------------------------
+  // 1. FILTER BY ACTIVE / NOT ACTIVE
+  // ----------------------------------------------------------
 
-    // Filter by designation
-    if (designation && designation.length > 0) {
-      const designationList = Array.isArray(designation)
-        ? designation
-        : [designation];
+  if (isActive !== undefined) {
+    queryBuilder.andWhere(
+      'user.isActive = :isActive',
+      { isActive },
+    );
+  }
 
-      queryBuilder.andWhere(
-        `EXISTS (
-          SELECT 1 FROM "designations" d
-          WHERE d."userId" = "user"."id"
-          AND d."designation" IN (:...designationList)
-        )`,
-        { designationList },
+  // ----------------------------------------------------------
+  // 2. FILTER BY DESIGNATION
+  // ----------------------------------------------------------
+
+  if (designation && designation.length > 0) {
+    const designationList = Array.isArray(designation)
+      ? designation
+      : [designation];
+
+    queryBuilder.andWhere(
+      `EXISTS (
+        SELECT 1
+        FROM "designations" d
+        WHERE d."userId" = "user"."id"
+        AND d."designation" IN (:...designationList)
+      )`,
+      { designationList },
+    );
+  }
+
+  // ----------------------------------------------------------
+  // 3. SEARCH
+  // ----------------------------------------------------------
+
+  if (search) {
+    queryBuilder.andWhere(
+      `(
+        user.firstName ILIKE :search OR
+        user.lastName ILIKE :search OR
+        user.mobile ILIKE :search
+      )`,
+      {
+        search: `%${search}%`,
+      },
+    );
+  }
+
+  // ----------------------------------------------------------
+  // 4. SORTING
+  // ----------------------------------------------------------
+
+  await validateAndSort(
+    queryBuilder,
+    orderBy ?? 'id',
+    sortOrder ?? 'ASC',
+    'user',
+    [
+      'id',
+      'firstName',
+      'lastName',
+      'mobile',
+    ],
+  );
+
+  // ----------------------------------------------------------
+  // 5. PAGINATION
+  // ----------------------------------------------------------
+
+  const page =
+    paginationOptsDto.page || 1;
+
+  const pageSize =
+    paginationOptsDto.pageSize || 10;
+
+  const skip =
+    (page - 1) * pageSize;
+
+  queryBuilder
+    .skip(skip)
+    .take(pageSize);
+
+  // ----------------------------------------------------------
+  // 6. GET USERS + TOTAL
+  // ----------------------------------------------------------
+
+  const [
+    users,
+    total,
+  ] = await queryBuilder.getManyAndCount();
+
+  // ----------------------------------------------------------
+  // 7. FORMAT USERS
+  // ----------------------------------------------------------
+
+  const data = users.map(
+    (user: User) =>
+      this.formatUser(user),
+  );
+
+  // ----------------------------------------------------------
+  // 8. PAGINATION INFORMATION
+  // ----------------------------------------------------------
+
+  const pageCount =
+    Math.ceil(total / pageSize);
+
+  // ----------------------------------------------------------
+  // 9. BUILD PAGINATION LINK
+  // ----------------------------------------------------------
+
+  const buildPaginationLink = (
+    targetPage: number,
+  ) => {
+    const params =
+      new URLSearchParams();
+
+    params.set(
+      'page',
+      targetPage.toString(),
+    );
+
+    params.set(
+      'pageSize',
+      pageSize.toString(),
+    );
+
+    if (search) {
+      params.set(
+        'search',
+        search,
       );
     }
 
-    // Searching
-    if (search) {
-      queryBuilder.andWhere(
-        `(
-          user.firstName ILIKE :search OR
-          user.lastName ILIKE :search OR
-          user.mobile ILIKE :search
-        )`,
-        {
-          search: `%${search}%`,
+    if (orderBy) {
+      params.set(
+        'orderBy',
+        orderBy,
+      );
+    }
+
+    if (sortOrder) {
+      params.set(
+        'sortOrder',
+        sortOrder,
+      );
+    }
+
+    if (isActive !== undefined) {
+      params.set(
+        'isActive',
+        isActive.toString(),
+      );
+    }
+
+    if (
+      designation &&
+      designation.length > 0
+    ) {
+      const designationList =
+        Array.isArray(designation)
+          ? designation
+          : [designation];
+
+      designationList.forEach(
+        (value) => {
+          params.append(
+            'designation',
+            value,
+          );
         },
       );
     }
 
-    // Sorting
-    await validateAndSort(
-      queryBuilder,
-      orderBy ?? 'id',
-      sortOrder ?? 'ASC',
-      'user',
-      ['id', 'firstName', 'lastName', 'mobile'],
-    );
+    const baseUrl =
+      `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`;
 
-    const paginatedResult = await PaginationService.paginate(
-      queryBuilder,
-      paginationOptsDto,
-    );
+    return `${baseUrl}?${params.toString()}`;
+  };
 
-    // Return mapped paginated result with formatted user objects
-    return {
-      ...paginatedResult,
-      data: paginatedResult.data.map((user: User) => this.formatUser(user)),
-    };
-  }
+  // ----------------------------------------------------------
+  // 10. RESPONSE
+  // ----------------------------------------------------------
+
+  return {
+    data,
+
+    meta: {
+      page,
+      pageSize,
+      itemCount: data.length,
+      pageCount,
+      nextLink:
+        page < pageCount
+          ? buildPaginationLink(
+              page + 1,
+            )
+          : null,
+
+      prevLink:
+        page > 1
+          ? buildPaginationLink(
+              page - 1,
+            )
+          : null,
+    },
+  };
+}
 
   async findOne(uuid: string) {
     const userWithDesignations = await this.usersRepository.findOne({

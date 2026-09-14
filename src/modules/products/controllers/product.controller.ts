@@ -18,6 +18,8 @@ import {
   Patch,
 } from '@nestjs/common';
 import { UpdateProductDto } from '../dtos/update-productdto';
+import { PaginationOptionsDto } from 'src/common/pagination/dto/pagination-options.dto';
+
 @Controller('api/products')
 @ApiTags('Products')
 @UseGuards(JwtAuthGuard)
@@ -74,15 +76,23 @@ export class ProductsController {
     status: 200,
     description: 'Products retrieved successfully.',
   })
-  async findAll(@Query() query: ProductQueryDto) {
-    const result = await this.productsService.findAll(query);
+async findAll(
+  @Query() query: ProductQueryDto,
+  @Query() paginationOptsDto: PaginationOptionsDto,
+  @Req() req: any,
+) {
+  const baseUrl =
+    `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`;
 
-    return {
-      data: result.data,
-      meta: result.meta,
-    };
-  }
+  const result =
+    await this.productsService.findAll(
+      query,
+      paginationOptsDto,
+      baseUrl,
+    );
 
+  return result;
+}
   // GET /api/products/:uuid
   @Get(':uuid')
   @ApiOperation({

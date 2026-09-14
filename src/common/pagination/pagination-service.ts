@@ -10,15 +10,20 @@ export class PaginationService {
     queryBuilder: SelectQueryBuilder<T>,
     pageOptionsDto: PaginationOptionsDto,
   ): Promise<PaginationResult<T>> {
+    const page = pageOptionsDto.page ?? 1;
+    const pageSize = pageOptionsDto.pageSize ?? 10;
+
     const [data, itemCount] = await queryBuilder
-      .skip((pageOptionsDto.page! - 1) * pageOptionsDto.pageSize!)
-      .take(pageOptionsDto.pageSize!)
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
       .getManyAndCount();
 
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000'; // Fixed environment variable string bug
+
     const meta = new PageMetaDto({
-      pageOptionsDto,
+      pageOptionsDto: { ...pageOptionsDto, page, pageSize },
       itemCount,
-      baseUrl: 'process.env.APP_URL!',
+      baseUrl,
     });
 
     return {

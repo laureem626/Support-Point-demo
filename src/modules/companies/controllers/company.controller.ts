@@ -18,6 +18,7 @@ import {
   Patch,
 } from '@nestjs/common';
 import { UpdateProductDto } from 'src/modules/products/dtos/update-productdto';
+import { PaginationOptionsDto } from '../../../common/pagination/dto/pagination-options.dto';
 @ApiTags('Companies')
 @Controller('api/companies')
 @UseGuards(JwtAuthGuard)
@@ -68,8 +69,12 @@ export class CompaniesController {
     status: 200,
     description: 'Companies retrieved successfully',
   })
-  async findAll(@Query() query: CompanyQueryDto) {
-    const result = await this.companiesService.findAll(query);
+  async findAll(@Query() query: CompanyQueryDto,@Query() paginationOptsDto: PaginationOptionsDto,@Req() req:any) {
+     const baseUrl =
+    `${req.protocol}://${req.get('host')}${req.baseUrl}${req.path}`;
+    const result = await this.companiesService.findAll(query,paginationOptsDto,
+      baseUrl,
+    );
 
     return {
       data: result.data,
