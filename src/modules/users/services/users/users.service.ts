@@ -360,7 +360,7 @@ export class UsersService {
     meta: {
       page,
       pageSize,
-      itemCount: data.length,
+      itemCount: total,
       pageCount,
       nextLink:
         page < pageCount

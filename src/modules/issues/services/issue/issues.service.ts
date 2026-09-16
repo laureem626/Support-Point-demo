@@ -973,7 +973,7 @@ return {
   meta: {
     page,
     pageSize: limit,
-    itemCount: data.length,
+    itemCount: total,
     pageCount,
 
     //hasNextPage: page < pageCount,
