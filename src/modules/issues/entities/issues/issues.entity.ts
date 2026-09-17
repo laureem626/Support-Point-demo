@@ -76,6 +76,9 @@ export class Issue {
   @Column({ type: 'text' })
   description: string;
 
+   @Column({name: 'closing_comment', type: 'text', nullable: true, default: null})
+  closingComment: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

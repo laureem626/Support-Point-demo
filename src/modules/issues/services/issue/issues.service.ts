@@ -1011,6 +1011,7 @@ return {
           createdBy: true,
 
           updatedBy: true,
+          closedBy: true,
 
           comments: {
             createdBy: true,
@@ -1052,10 +1053,34 @@ return {
 
         .getOne();
 
+      
+    // Extract closing comment based on closedBy user
+    let closingComment: string | null = null;
+
+    if (
+      issue.status === IssueStatus.CLOSED &&
+      issue.closedBy &&
+      issue.comments?.length > 0
+    ) {
+      // Find all comments created by the supporter who closed the issue
+      const closedUserComments = issue.comments.filter(
+        (c) => c.createdBy?.id === issue.closedBy.id,
+      );
+
+      // Get the latest comment from that user
+      if (closedUserComments.length > 0) {
+        const lastComment = closedUserComments[closedUserComments.length - 1];
+        closingComment = lastComment.comments;
+      }
+    }
+
     return {
       statusCode: 200,
 
-      data: issue,
+     data: {
+        ...issue,
+        closingComment,
+      },
 
       currentAssignee:
         lastAssignment?.assignedUser ??
@@ -1310,6 +1335,16 @@ return {
         issue,
       );
 
+      if (comment) {
+      // Create a new record in your existing comments table
+      const newComment = this.commentRepository.create({
+        issueId: issue.id, // Or however your relation is defined (e.g., issue: issue)
+        createdBy: user,   // Pass the user entity object (or 'user: user', depending on your entity field name)
+    comments: comment,  // Adjust field name if it's 'content', 'text', or 'message'
+  });
+
+      await this.commentRepository.save(newComment);
+    }
     // ----------------------------------------------------------
     // 7. Response
     // ----------------------------------------------------------
