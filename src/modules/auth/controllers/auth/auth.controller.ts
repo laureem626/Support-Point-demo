@@ -1,4 +1,4 @@
-import { AuthService } from '../../services/auth/auth.service';
+// import { AuthService } from '../../services/auth/auth.service';
 import { LocalAuthGuard } from '../../guards/local-auth.guard';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { RefreshTokenDto } from '../../dtos/refresh-token/refresh-token.dto';
@@ -13,6 +13,7 @@ import {
   Body,
   Get,
 } from '@nestjs/common';
+import { AuthService } from '../../services/auth/auth.service';
 @Controller('api/auth')
 @ApiTags('Auth')
 export class AuthController {

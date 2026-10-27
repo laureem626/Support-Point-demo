@@ -33,7 +33,7 @@ export class Issue {
 
   @Expose()
   get number(): string {
-    return `ISSUE-${String(this.id).padStart(4, '0')}`;
+    return `TICKET-${String(this.id).padStart(4, '0')}`;
   }
 
   @Index()
