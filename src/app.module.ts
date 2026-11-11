@@ -14,6 +14,7 @@ import { CompaniesModule } from './modules/companies/companies.modules';
 import { IssuesModule } from './modules/issues/issues.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { NotificationsModule } from './modules/notifications/module/notifications.module';
+import { MessagesModule } from './modules/Messages/nextsms.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { NotificationsModule } from './modules/notifications/module/notification
     IssuesModule,
     DashboardModule,
     NotificationsModule,
+    MessagesModule,
   ],
 
   providers: [IsUniqueConstraint],

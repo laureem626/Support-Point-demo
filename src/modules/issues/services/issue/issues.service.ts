@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
@@ -44,6 +45,7 @@ import {
 import { QueryParamsDto } from 'src/common/queries/query-params.dto';
 import { DashboardService } from 'src/modules/dashboard/services/dashboard.service';
 import { NotificationsGateway } from '../../../notifications/gateway/notifications.gateway';
+import { NextsmsService } from 'src/modules/Messages/service/nextsms.service';
 
 
 @Injectable()
@@ -67,6 +69,8 @@ export class IssuesService {
     private readonly dashboardService: DashboardService,
 
      private readonly notificationsGateway: NotificationsGateway,
+
+     private readonly nextsmsService: NextsmsService,
   ) {}
 
   // ============================================================
@@ -154,6 +158,8 @@ export class IssuesService {
 
     const saved =
       await this.issueRepository.save(issue);
+
+      await this.sendReporterSms(saved, 'CREATED');
 
     const result =
       await this.issueRepository.findOne({
@@ -1335,6 +1341,9 @@ return {
         issue,
       );
 
+      // Notify the reporter that the issue has been resolved.
+await this.sendReporterSms(savedIssue, 'CLOSED');
+
       if (comment) {
       // Create a new record in your existing comments table
       const newComment = this.commentRepository.create({
@@ -1343,7 +1352,8 @@ return {
     comments: comment,  // Adjust field name if it's 'content', 'text', or 'message'
   });
 
-      await this.commentRepository.save(newComment);
+// Notify the reporter that the issue has been resolved.
+      // Notify the reporter that the issue has been resolved.
     }
     // ----------------------------------------------------------
     // 7. Response
@@ -1636,4 +1646,45 @@ return {
       paginationOptsDto,
     );
   }
+
+  private readonly logger = new Logger(IssuesService.name);
+
+private async sendReporterSms(
+  issue: Issue,
+  event: 'CREATED' | 'CLOSED',
+): Promise<void> {
+  const reporterName = issue.reporterName?.trim();
+  const issueTitle = issue.title?.trim() || 'Issue';
+  const ticketNumber = issue.number;
+
+  let message: string;
+
+  if (event === 'CREATED') {
+    message =
+      `Habari ${reporterName}, ${ticketNumber} ${issueTitle} imepokelewa. Asante!`;
+  } else {
+    message =
+      `Habari ${reporterName}, ${ticketNumber} ${issueTitle.toUpperCase()} IMETATULIWA. Asante!`;
+  }
+
+  try {
+    await this.nextsmsService.sendSms(
+      issue.reporterMobile,
+      message,
+      `qela-${event.toLowerCase()}-${issue.id}`,
+    );
+
+    this.logger.log(
+      `SMS request submitted for ${ticketNumber} (${event})`,
+    );
+  } catch (error) {
+    // The issue is already saved. An SMS failure should not
+    // make the issue creation or closure operation fail.
+    this.logger.error(
+      `Failed to send ${event} SMS for ${ticketNumber}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+}
 }
